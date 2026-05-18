@@ -347,7 +347,7 @@ export default function PlatformAdminPage() {
             <Shield size={20} className="text-amber-600" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-foreground">Platform Admin</h2>
+            <h2 className="text-base font-semibold text-foreground">Super Admin</h2>
             <p className="text-xs text-muted-foreground">Monitor all organizations, users, and platform activity.</p>
           </div>
         </div>
@@ -668,7 +668,7 @@ export default function PlatformAdminPage() {
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-foreground truncate">
                     {u.displayName}
-                    {u.isPlatformAdmin && <span className="ml-1 text-[9px] text-amber-600">★ PLATFORM ADMIN</span>}
+                    {u.isPlatformAdmin && <span className="ml-1 text-[9px] text-amber-600">★ SUPER ADMIN</span>}
                   </p>
                 </div>
               </div>

@@ -203,7 +203,7 @@ export function Sidebar({ role, userName, onLogout, mobileOpen, onMobileClose }:
             )}
           >
             <Shield size={14} />
-            <span className="font-medium">Platform Admin</span>
+            <span className="font-medium">Super Admin</span>
           </Link>
         </div>
       )}
