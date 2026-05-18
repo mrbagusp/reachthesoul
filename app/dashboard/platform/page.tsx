@@ -46,6 +46,169 @@ const PLAN_COLORS: Record<string, string> = {
   enterprise: "#D97706",
 };
 
+// ─── Channel Config Panel (superadmin view per org) ──────────────────────────
+function ChannelConfigPanel({ orgId, projectId }: { orgId: string; projectId: string }) {
+  const [config, setConfig] = useState<Record<string, string>>({});
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [showTokens, setShowTokens] = useState(false);
+
+  const region = "asia-southeast1";
+  const baseUrl = `https://${region}-${projectId}.cloudfunctions.net`;
+
+  const webhookUrls = {
+    fonnte: `${baseUrl}/webhookFonnte?org=${orgId}`,
+    whatsappMeta: `${baseUrl}/webhookWhatsapp?org=${orgId}`,
+    instagram: `${baseUrl}/webhookInstagram?org=${orgId}`,
+    facebook: `${baseUrl}/webhookFacebook?org=${orgId}`,
+    call: `${baseUrl}/webhookCall?org=${orgId}`,
+  };
+
+  useEffect(() => {
+    if (loaded) return;
+    (async () => {
+      try {
+        const [{ doc, getDoc }, { db }] = await Promise.all([
+          import("firebase/firestore"), import("@/lib/firebase"),
+        ]);
+        const snap = await getDoc(doc(db, "organizations", orgId));
+        if (snap.exists()) {
+          const cc = snap.data()?.channelConfig ?? {};
+          setConfig({
+            active_whatsapp_provider: cc.active_whatsapp_provider ?? "fonnte",
+            fonnte_token: cc.fonnte_token ?? "",
+            fonnte_device_number: cc.fonnte_device_number ?? "",
+            meta_phone_number_id: cc.meta_phone_number_id ?? "",
+            meta_access_token: cc.meta_access_token ?? "",
+            meta_app_secret: cc.meta_app_secret ?? "",
+            facebook_page_token: cc.facebook_page_token ?? "",
+            instagram_token: cc.instagram_token ?? "",
+          });
+        }
+        setLoaded(true);
+      } catch (err) {
+        console.error("Failed to load channel config:", err);
+        setLoaded(true);
+      }
+    })();
+  }, [orgId, loaded]);
+
+  const saveConfig = async () => {
+    setSaving(true);
+    try {
+      const [{ doc, updateDoc, serverTimestamp }, { db }] = await Promise.all([
+        import("firebase/firestore"), import("@/lib/firebase"),
+      ]);
+      await updateDoc(doc(db, "organizations", orgId), {
+        channelConfig: config,
+        updatedAt: serverTimestamp(),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error("Failed to save config:", err);
+      alert("Failed to save. Check console.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateField = (key: string, value: string) => setConfig((prev) => ({ ...prev, [key]: value }));
+
+  const CopyBtn = ({ text }: { text: string }) => {
+    const [copied, setCopied] = useState(false);
+    return (
+      <button
+        onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+        className="text-[9px] px-1.5 py-0.5 rounded border border-border bg-background hover:bg-muted text-muted-foreground shrink-0"
+      >
+        {copied ? "✓" : "Copy"}
+      </button>
+    );
+  };
+
+  if (!loaded) return <div className="mt-4 text-[10px] text-muted-foreground">Loading channel config...</div>;
+
+  return (
+    <div className="mt-4 p-4 rounded-lg border border-amber-200 bg-amber-50/30">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] font-semibold text-foreground flex items-center gap-1.5">
+          <Globe size={11} className="text-amber-600" /> Channel Config & Webhook URLs
+        </p>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowTokens(!showTokens)} className="text-[9px] px-2 py-0.5 rounded border border-border bg-background hover:bg-muted text-muted-foreground">
+            {showTokens ? "Hide tokens" : "Show tokens"}
+          </button>
+          <button
+            onClick={saveConfig}
+            disabled={saving}
+            className={cn("text-[9px] px-3 py-1 rounded font-semibold transition-colors", saved ? "bg-green-100 text-green-700" : "bg-primary text-white hover:bg-primary/90")}
+          >
+            {saving ? "Saving..." : saved ? "✓ Saved" : "Save Config"}
+          </button>
+        </div>
+      </div>
+
+      {/* Webhook URLs (read-only, auto-generated) */}
+      <div className="mb-4">
+        <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Webhook URLs (paste these in provider dashboards)</p>
+        <div className="space-y-1.5">
+          {Object.entries(webhookUrls).map(([key, url]) => (
+            <div key={key} className="flex items-center gap-2">
+              <span className="text-[9px] font-mono text-muted-foreground w-24 shrink-0">{key}</span>
+              <input readOnly value={url} className="flex-1 h-6 px-2 text-[9px] font-mono rounded border border-border bg-muted/40 text-foreground" />
+              <CopyBtn text={url} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Credentials */}
+      <div>
+        <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Channel Credentials</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[9px] text-muted-foreground block mb-0.5">WA Provider</label>
+            <select value={config.active_whatsapp_provider} onChange={(e) => updateField("active_whatsapp_provider", e.target.value)} className="w-full h-7 px-2 text-[10px] rounded border border-border bg-background">
+              <option value="fonnte">Quick Connect (Fonnte)</option>
+              <option value="meta">WhatsApp Business API (Meta)</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[9px] text-muted-foreground block mb-0.5">Fonnte Device Number</label>
+            <input type="text" value={config.fonnte_device_number} onChange={(e) => updateField("fonnte_device_number", e.target.value)} placeholder="6281234567890" className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
+          </div>
+          <div>
+            <label className="text-[9px] text-muted-foreground block mb-0.5">Fonnte Token</label>
+            <input type={showTokens ? "text" : "password"} value={config.fonnte_token} onChange={(e) => updateField("fonnte_token", e.target.value)} placeholder="token..." className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
+          </div>
+          <div>
+            <label className="text-[9px] text-muted-foreground block mb-0.5">Meta Phone Number ID</label>
+            <input type="text" value={config.meta_phone_number_id} onChange={(e) => updateField("meta_phone_number_id", e.target.value)} placeholder="123456789012345" className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
+          </div>
+          <div>
+            <label className="text-[9px] text-muted-foreground block mb-0.5">Meta Access Token</label>
+            <input type={showTokens ? "text" : "password"} value={config.meta_access_token} onChange={(e) => updateField("meta_access_token", e.target.value)} placeholder="EAAxxxx..." className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
+          </div>
+          <div>
+            <label className="text-[9px] text-muted-foreground block mb-0.5">Meta App Secret</label>
+            <input type={showTokens ? "text" : "password"} value={config.meta_app_secret} onChange={(e) => updateField("meta_app_secret", e.target.value)} placeholder="abc123..." className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
+          </div>
+          <div>
+            <label className="text-[9px] text-muted-foreground block mb-0.5">Facebook Page Token</label>
+            <input type={showTokens ? "text" : "password"} value={config.facebook_page_token} onChange={(e) => updateField("facebook_page_token", e.target.value)} placeholder="Page token..." className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
+          </div>
+          <div>
+            <label className="text-[9px] text-muted-foreground block mb-0.5">Instagram Token</label>
+            <input type={showTokens ? "text" : "password"} value={config.instagram_token} onChange={(e) => updateField("instagram_token", e.target.value)} placeholder="IG token..." className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PlatformAdminPage() {
   const router = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -416,7 +579,7 @@ export default function PlatformAdminPage() {
                           >
                             <option value="free">Free ($0)</option>
                             <option value="starter">Starter ($29/mo)</option>
-                            <option value="growth">Growth ($79/mo)</option>
+                            <option value="growth">Growth ($97/mo)</option>
                             <option value="enterprise">Enterprise ($249+/mo)</option>
                           </select>
                         </div>
@@ -475,6 +638,9 @@ export default function PlatformAdminPage() {
                         </div>
                       ))}
                     </div>
+
+                    {/* ─── Channel Config & Webhook URLs ──────────────── */}
+                    <ChannelConfigPanel orgId={org.orgId} projectId={process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "reachthesoul-prod"} />
                   </div>
                 )}
               </CardContent>
