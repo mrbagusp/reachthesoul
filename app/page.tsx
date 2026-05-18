@@ -442,7 +442,7 @@ const BODY = `
       </div>
       <div class="price-card popular">
         <h3>Growth</h3>
-        <div class="amount">$79<span>/mo</span></div>
+        <div class="amount">$97<span>/mo</span></div>
         <div class="desc">Omnichannel + advanced AI.</div>
         <ul>
           <li>15 users</li>
@@ -453,7 +453,6 @@ const BODY = `
           <li>24/7 AI counselor (advanced)</li>
           <li>Call integration available ($49 setup)</li>
           <li>Advanced analytics</li>
-          <li>Custom branding</li>
           <li>Priority support</li>
         </ul>
         <a href="/register" class="btn btn-primary">Start with Growth</a>
@@ -468,6 +467,7 @@ const BODY = `
           <li>5,000 AI conversations/mo</li>
           <li>3,000 WhatsApp conversations</li>
           <li>All channels + API access</li>
+          <li>Custom branding & white-label</li>
           <li>Call integration included</li>
           <li>AI trained on your doctrine</li>
           <li>Dedicated account manager</li>
