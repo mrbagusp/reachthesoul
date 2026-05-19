@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://reachthesoul.org";
 
-    const response = await fetch(`${POLAR_SERVER}/v1/checkouts/custom`, {
+    const response = await fetch(`${POLAR_SERVER}/v1/checkouts`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${POLAR_ACCESS_TOKEN}`,
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         product_id: productId,
-        success_url: `${baseUrl}/dashboard/billing?upgraded=${plan}`,
+        success_url: `${baseUrl}/dashboard/billing?upgraded=${plan}&checkout_id={CHECKOUT_ID}`,
         customer_email: userEmail || undefined,
         customer_name: userName || undefined,
         metadata: {
