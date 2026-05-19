@@ -38,7 +38,7 @@ export default function BillingPage() {
 
     setUpgrading(tier);
     try {
-      const res = await fetch("/api/lemon-squeezy/checkout", {
+      const res = await fetch("/api/polar/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
