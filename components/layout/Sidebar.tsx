@@ -15,6 +15,7 @@ import { useCallStore } from "@/store/call-store";
 
 import { useOrgStore } from "@/store/org-store";
 import { useAuthStore } from "@/store/auth-store";
+import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
 
 interface NavItem {
   label: string;
@@ -106,6 +107,9 @@ export function Sidebar({ role, userName, onLogout, mobileOpen, onMobileClose }:
           <X size={16} />
         </button>
       </div>
+
+      {/* Org Switcher — only renders if user has 2+ orgs */}
+      <OrgSwitcher />
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5 overflow-y-auto">

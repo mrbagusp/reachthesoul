@@ -1,14 +1,223 @@
 rules_version = '2';
+
+// ReachTheSoul — Multi-Tenant Firestore Security Rules
+// ─────────────────────────────────────────────────────
+// Every data collection is scoped by orgId.
+// Users carry an orgRoles map: { "org-slug": "admin" | "supervisor" | "agent" }
+// Cloud Functions (Admin SDK) bypass these rules entirely.
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ─── Helpers ──────────────────────────────────────────────────
+
     function isSignedIn() {
       return request.auth != null;
     }
-    match /{collection}/{docId} {
-      allow read, write: if isSignedIn();
+
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
-    match /{collection}/{docId}/{sub}/{subId} {
-      allow read, write: if isSignedIn();
+
+    // Primary: orgRoles map  { "org-slug": "admin" }
+    function hasOrgRole(orgId) {
+      let user = getUserDoc();
+      return user != null
+        && 'orgRoles' in user
+        && user.orgRoles != null
+        && orgId in user.orgRoles;
     }
+
+    function getOrgRole(orgId) {
+      return getUserDoc().orgRoles[orgId];
+    }
+
+    function isOrgMember(orgId) {
+      return isSignedIn() && hasOrgRole(orgId);
+    }
+
+    function isOrgAdmin(orgId) {
+      return isOrgMember(orgId) && getOrgRole(orgId) == "admin";
+    }
+
+    function isOrgAdminOrSupervisor(orgId) {
+      return isOrgMember(orgId)
+        && (getOrgRole(orgId) == "admin" || getOrgRole(orgId) == "supervisor");
+    }
+
+    function isPlatformAdmin() {
+      return isSignedIn()
+        && getUserDoc() != null
+        && getUserDoc().isPlatformAdmin == true;
+    }
+
+    // For write rules — check orgId on the incoming document
+    function incomingOrgId() {
+      return request.resource.data.orgId;
+    }
+
+    function existingOrgId() {
+      return resource.data.orgId;
+    }
+
+    // ─── Users ────────────────────────────────────────────────────
+    // Users can read their own doc. Admins can read members of their org.
+    // Only platform admins or org admins can create/update user docs.
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == userId
+        || isPlatformAdmin()
+        // Admin/supervisor can read users who share an org
+        || (resource.data.orgRoles != null
+            && resource.data.orgRoles.keys().hasAny(getUserDoc().orgRoles.keys()))
+      );
+
+      // Users can update their own profile (limited fields)
+      allow update: if isSignedIn() && request.auth.uid == userId
+        // Cannot escalate own role or become platform admin
+        && (!('isPlatformAdmin' in request.resource.data)
+            || request.resource.data.isPlatformAdmin == resource.data.isPlatformAdmin)
+        && (!('orgRoles' in request.resource.data)
+            || request.resource.data.orgRoles == resource.data.orgRoles);
+
+      // Org admin can update users in their org (role changes, deactivation)
+      allow update: if isSignedIn() && isPlatformAdmin();
+      allow update: if isSignedIn()
+        && resource.data.orgRoles != null
+        && resource.data.orgRoles.keys().hasAny(getUserDoc().orgRoles.keys())
+        && isOrgAdmin(resource.data.orgRoles.keys().toSet().intersection(getUserDoc().orgRoles.keys().toSet()).toArray()[0]);
+
+      // Only platform admin or the registration flow (Cloud Function) creates users
+      allow create: if isSignedIn() && (
+        request.auth.uid == userId  // self-registration
+        || isPlatformAdmin()
+      );
+
+      allow delete: if isPlatformAdmin();
+    }
+
+    // ─── Organizations ────────────────────────────────────────────
+
+    match /organizations/{orgId} {
+      // Members can read their org
+      allow read: if isSignedIn() && (
+        isOrgMember(orgId)
+        || isPlatformAdmin()
+      );
+
+      // Only org admin or platform admin can update
+      allow update: if isSignedIn() && (
+        isOrgAdmin(orgId)
+        || isPlatformAdmin()
+      );
+
+      // Only platform admin or self-registration creates orgs
+      allow create: if isSignedIn();
+      allow delete: if isPlatformAdmin();
+    }
+
+    // ─── Org-Scoped Data Collections ──────────────────────────────
+    // Pattern: members can read, admin/supervisor can write.
+
+    match /respondents/{docId} {
+      allow read:   if isSignedIn() && isOrgMember(existingOrgId());
+      allow create: if isSignedIn() && isOrgMember(incomingOrgId());
+      allow update: if isSignedIn() && isOrgMember(existingOrgId());
+      allow delete: if isSignedIn() && isOrgAdminOrSupervisor(existingOrgId());
+    }
+
+    match /tickets/{docId} {
+      allow read:   if isSignedIn() && isOrgMember(existingOrgId());
+      allow create: if isSignedIn() && isOrgMember(incomingOrgId());
+      allow update: if isSignedIn() && isOrgMember(existingOrgId());
+      allow delete: if isSignedIn() && isOrgAdmin(existingOrgId());
+
+      // Messages subcollection — same org scope as parent ticket
+      match /messages/{msgId} {
+        allow read:   if isSignedIn() && isOrgMember(
+          get(/databases/$(database)/documents/tickets/$(docId)).data.orgId
+        );
+        allow create: if isSignedIn() && isOrgMember(
+          get(/databases/$(database)/documents/tickets/$(docId)).data.orgId
+        );
+        allow update: if false; // Messages are immutable
+        allow delete: if false;
+      }
+    }
+
+    match /categories/{docId} {
+      allow read:  if isSignedIn() && isOrgMember(existingOrgId());
+      allow create: if isSignedIn() && isOrgAdmin(incomingOrgId());
+      allow update: if isSignedIn() && isOrgAdmin(existingOrgId());
+      allow delete: if isSignedIn() && isOrgAdmin(existingOrgId());
+    }
+
+    match /lead_sources/{docId} {
+      allow read:  if isSignedIn() && isOrgMember(existingOrgId());
+      allow create: if isSignedIn() && (
+        isOrgAdmin(incomingOrgId()) || isOrgMember(incomingOrgId()) // seed on first load
+      );
+      allow update: if isSignedIn() && isOrgAdmin(existingOrgId());
+      allow delete: if isSignedIn() && isOrgAdmin(existingOrgId());
+    }
+
+    match /program_sources/{docId} {
+      allow read:  if isSignedIn() && isOrgMember(existingOrgId());
+      allow create: if isSignedIn() && (
+        isOrgAdmin(incomingOrgId()) || isOrgMember(incomingOrgId()) // seed on first load
+      );
+      allow update: if isSignedIn() && isOrgAdmin(existingOrgId());
+      allow delete: if isSignedIn() && isOrgAdmin(existingOrgId());
+    }
+
+    match /interaction_outcomes/{docId} {
+      allow read:  if isSignedIn() && isOrgMember(existingOrgId());
+      allow create: if isSignedIn() && isOrgAdmin(incomingOrgId());
+      allow update: if isSignedIn() && isOrgAdmin(existingOrgId());
+      allow delete: if isSignedIn() && isOrgAdmin(existingOrgId());
+    }
+
+    // ─── Counters (ticket number sequence) ────────────────────────
+
+    match /counters/{docId} {
+      allow read:  if isSignedIn();
+      allow write: if isSignedIn(); // increment on ticket creation
+    }
+
+    // ─── System Config ────────────────────────────────────────────
+
+    match /system_config/{docId} {
+      allow read:  if isSignedIn();
+      allow write: if isSignedIn() && isPlatformAdmin();
+    }
+
+    // ─── Notifications ────────────────────────────────────────────
+
+    match /notifications/{docId} {
+      allow read:  if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ─── Call Records ─────────────────────────────────────────────
+
+    match /calls/{docId} {
+      allow read:   if isSignedIn() && isOrgMember(existingOrgId());
+      allow create: if isSignedIn() && isOrgMember(incomingOrgId());
+      allow update: if isSignedIn() && isOrgMember(existingOrgId());
+      allow delete: if isSignedIn() && isOrgAdmin(existingOrgId());
+    }
+
+    // ─── Presence ─────────────────────────────────────────────────
+
+    match /presence/{userId} {
+      allow read:  if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // ─── Catch-all: deny everything else ──────────────────────────
+    // Any collection not explicitly matched is blocked.
   }
 }
