@@ -80,11 +80,8 @@ export async function POST(req: NextRequest) {
 
     // For overlay checkout, we return the transaction ID
     // The client-side Paddle.js will open checkout with this ID
-    // Also construct a direct checkout URL as fallback
-    const checkoutUrl =
-      PADDLE_ENV === "production"
-        ? `https://checkout.paddle.com/checkout/custom/${txId}`
-        : `https://sandbox-checkout.paddle.com/checkout/custom/${txId}`;
+    // Paddle Billing returns checkout.url in the transaction response
+    const checkoutUrl = data.data?.checkout?.url ?? null;
 
     return NextResponse.json({
       transactionId: txId,

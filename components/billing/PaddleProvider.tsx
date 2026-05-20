@@ -133,14 +133,13 @@ export function PaddleProvider({ children }: { children: React.ReactNode }) {
       // Option 2: Open with priceId (direct client-side)
       else if (options.priceId) {
         checkoutOpts.items = [{ priceId: options.priceId, quantity: 1 }];
+        if (options.customData) {
+          checkoutOpts.customData = options.customData;
+        }
       }
 
       if (options.customerEmail) {
         checkoutOpts.customer = { email: options.customerEmail };
-      }
-
-      if (options.customData) {
-        checkoutOpts.customData = options.customData;
       }
 
       if (options.successUrl) {
