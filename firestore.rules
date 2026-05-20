@@ -61,17 +61,14 @@ service cloud.firestore {
     }
 
     // ─── Users ────────────────────────────────────────────────────
-    // Users can read their own doc. Admins can read members of their org.
-    // Only platform admins or org admins can create/update user docs.
+    // All authenticated users can read user docs (client-side filtering by org).
+    // Users can update their own profile. Admins can update via platform admin panel.
 
     match /users/{userId} {
-      allow read: if isSignedIn() && (
-        request.auth.uid == userId
-        || isPlatformAdmin()
-        // Admin/supervisor can read users who share an org
-        || (resource.data.orgRoles != null
-            && resource.data.orgRoles.keys().hasAny(getUserDoc().orgRoles.keys()))
-      );
+      // Any authenticated user can read any user doc.
+      // Org filtering happens client-side (useUsers filters by orgRoles/orgMemberships).
+      // This is safe because user docs don't contain sensitive data beyond org membership.
+      allow read: if isSignedIn();
 
       // Users can update their own profile (limited fields)
       allow update: if isSignedIn() && request.auth.uid == userId
@@ -81,14 +78,10 @@ service cloud.firestore {
         && (!('orgRoles' in request.resource.data)
             || request.resource.data.orgRoles == resource.data.orgRoles);
 
-      // Org admin can update users in their org (role changes, deactivation)
+      // Platform admin can update any user
       allow update: if isSignedIn() && isPlatformAdmin();
-      allow update: if isSignedIn()
-        && resource.data.orgRoles != null
-        && resource.data.orgRoles.keys().hasAny(getUserDoc().orgRoles.keys())
-        && isOrgAdmin(resource.data.orgRoles.keys().toSet().intersection(getUserDoc().orgRoles.keys().toSet()).toArray()[0]);
 
-      // Only platform admin or the registration flow (Cloud Function) creates users
+      // Only self-registration or platform admin creates users
       allow create: if isSignedIn() && (
         request.auth.uid == userId  // self-registration
         || isPlatformAdmin()

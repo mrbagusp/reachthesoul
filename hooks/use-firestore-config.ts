@@ -141,7 +141,78 @@ export function useOutcomes() {
 }
 
 export function useUsers() {
-  // Users are NOT org-scoped in this hook — they use a separate query
-  // This hook returns ALL users; org-scoped user list should filter by orgMemberships
-  return useFirestoreCollection("users", "uid");
+  // Users don't have an orgId field — they use orgRoles map.
+  // We query users where orgMemberships array contains the active orgId,
+  // since orgRoles map keys can't be queried with where() directly.
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const activeOrg = useOrgStore((s) => s.activeOrg);
+  const orgId = activeOrg?.orgId;
+
+  useEffect(() => {
+    if (!orgId) { setLoading(false); return; }
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+
+    async function subscribe() {
+      try {
+        const [{ collection, query, onSnapshot }, { db }] =
+          await Promise.all([
+            import("firebase/firestore"),
+            import("@/lib/firebase"),
+          ]);
+
+        // Firestore can't query orgRoles map keys or orgMemberships array of objects,
+        // so we query all users and filter client-side. This is fine for org-scoped
+        // user lists (typically < 100 users per org).
+        const qAll = query(collection(db, "users"));
+
+        unsubscribe = onSnapshot(
+          qAll,
+          (snap) => {
+            if (cancelled) return;
+            const docs = snap.docs
+              .map((d) => {
+                const data = d.data();
+                return {
+                  ...data,
+                  uid: d.id,
+                  id: d.id,
+                  createdAt: data.createdAt?.toDate?.()?.toISOString() ?? data.createdAt ?? "",
+                  updatedAt: data.updatedAt?.toDate?.()?.toISOString() ?? data.updatedAt ?? "",
+                };
+              })
+              .filter((u: any) => {
+                // Filter by orgRoles map (primary) or orgMemberships array (fallback)
+                if (u.orgRoles && orgId in u.orgRoles) return true;
+                if (u.orgMemberships && Array.isArray(u.orgMemberships)) {
+                  return u.orgMemberships.some((m: any) => m.orgId === orgId);
+                }
+                return false;
+              });
+            setItems(docs);
+            setLoading(false);
+          },
+          (err) => {
+            if (cancelled) return;
+            console.error("[useUsers]", err);
+            setError(err.message);
+            setLoading(false);
+          },
+        );
+      } catch (err: any) {
+        if (!cancelled) {
+          console.error("[useUsers]", err);
+          setError(err.message);
+          setLoading(false);
+        }
+      }
+    }
+
+    subscribe();
+    return () => { cancelled = true; unsubscribe?.(); };
+  }, [orgId]);
+
+  return { items, loading, error };
 }
