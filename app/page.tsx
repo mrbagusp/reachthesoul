@@ -467,14 +467,14 @@ const BODY = `
           <li>5,000 AI conversations/mo</li>
           <li>3,000 WhatsApp conversations</li>
           <li>All channels + API access</li>
-          <li>Custom branding & white-label</li>
-          <li>Call integration included</li>
           <li>AI trained on your doctrine</li>
+          <li>Call integration included</li>
           <li>Dedicated account manager</li>
           <li>SLA guarantee</li>
           <li>Priority onboarding</li>
         </ul>
-        <a href="mailto:hello@reachthesoul.org?subject=Enterprise%20Inquiry" class="btn btn-dark">Contact Sales</a>
+        <a href="/register" class="btn btn-dark">Start with Enterprise</a>
+        <p style="margin-top:8px;font-size:12px;color:#888;">Need custom setup? <a href="mailto:hello@reachthesoul.org" style="color:#2DD4BF;">Contact us</a></p>
       </div>
     </div>
   </div>

@@ -6,7 +6,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { usePaddle } from "@/components/billing/PaddleProvider";
 import { PLAN_CONFIGS, getPlanConfig, FEATURE_LABELS, FEATURE_GROUPS, ADD_ONS, formatLimit } from "@/lib/plans";
 import type { PlanTier } from "@/types";
-import { Check, X, Crown, Sparkles, ArrowRight, Mail, Database, Infinity, Wrench, CheckCircle, AlertTriangle, Clock, CreditCard, RefreshCw } from "lucide-react";
+import { Check, X, Crown, Sparkles, ArrowRight, Database, Infinity, Wrench, CheckCircle, AlertTriangle, Clock, CreditCard, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -34,11 +34,6 @@ export default function BillingPage() {
   const [upgrading, setUpgrading] = useState<string | null>(null);
 
   const handleUpgrade = async (tier: PlanTier) => {
-    if (tier === "enterprise") {
-      window.open("mailto:hello@reachthesoul.org?subject=Enterprise Plan Inquiry&body=Hi, I would like to learn more about the Enterprise plan for our organization.", "_blank");
-      return;
-    }
-
     setUpgrading(tier);
     try {
       // Create server-side transaction first, then open Paddle overlay
@@ -301,7 +296,7 @@ export default function BillingPage() {
                       <Button variant="outline" size="sm" className="w-full" disabled>Current Plan</Button>
                     ) : isUpgrade ? (
                       <Button size="sm" className="w-full gap-1.5" onClick={() => handleUpgrade(tier)} disabled={upgrading === tier} style={{ backgroundColor: config.color }}>
-                        {upgrading === tier ? "Processing..." : tier === "enterprise" ? <><Mail size={14} /> Contact Sales</> : <><Sparkles size={14} /> Upgrade to {config.name}</>}
+                        {upgrading === tier ? "Processing..." : <><Sparkles size={14} /> Upgrade to {config.name}</>}
                       </Button>
                     ) : (
                       <Button variant="ghost" size="sm" className="w-full text-muted-foreground" disabled>&mdash;</Button>
@@ -311,6 +306,14 @@ export default function BillingPage() {
               </Card>
             );
           })}
+        </div>
+        <div className="mt-4 text-center">
+          <p className="text-xs text-muted-foreground">
+            Need custom configuration, white-label, or a reseller partnership?{" "}
+            <a href="mailto:hello@reachthesoul.org?subject=Custom%20Configuration%20Inquiry" className="text-primary font-medium hover:underline">Contact us</a>
+            {" "}or{" "}
+            <a href="https://wa.me/6285974773341?text=Hi%2C%20I%27m%20interested%20in%20custom%20configuration%20for%20ReachTheSoul" target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">WhatsApp us</a>
+          </p>
         </div>
       </div>
 
