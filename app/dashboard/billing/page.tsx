@@ -3,9 +3,10 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useOrgStore } from "@/store/org-store";
 import { useAuthStore } from "@/store/auth-store";
+import { usePaddle } from "@/components/billing/PaddleProvider";
 import { PLAN_CONFIGS, getPlanConfig, FEATURE_LABELS, FEATURE_GROUPS, ADD_ONS, formatLimit } from "@/lib/plans";
 import type { PlanTier } from "@/types";
-import { Check, X, Crown, Sparkles, ArrowRight, Mail, Database, Infinity, Wrench, CheckCircle } from "lucide-react";
+import { Check, X, Crown, Sparkles, ArrowRight, Mail, Database, Infinity, Wrench, CheckCircle, AlertTriangle, Clock, CreditCard, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -17,9 +18,11 @@ export default function BillingPage() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const searchParams = useSearchParams();
   const upgradedPlan = searchParams.get("upgraded");
+  const { openCheckout, isReady: paddleReady } = usePaddle();
   const currentPlan = (activeOrg?.plan ?? "free") as PlanTier;
   const currentConfig = getPlanConfig(currentPlan);
   const usage = activeOrg?.usage;
+  const subscription = (activeOrg as any)?.subscription;
 
   const usageMetrics = [
     { label: "Team Members", current: usage?.currentUsers ?? 0, max: currentConfig.maxUsers },
@@ -38,7 +41,8 @@ export default function BillingPage() {
 
     setUpgrading(tier);
     try {
-      const res = await fetch("/api/polar/checkout", {
+      // Create server-side transaction first, then open Paddle overlay
+      const res = await fetch("/api/paddle/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -49,7 +53,15 @@ export default function BillingPage() {
         }),
       });
       const data = await res.json();
-      if (data.checkoutUrl) {
+
+      if (data.transactionId && paddleReady) {
+        // Open Paddle overlay checkout (best UX)
+        openCheckout({
+          transactionId: data.transactionId,
+          customerEmail: currentUser?.email ?? undefined,
+        });
+      } else if (data.checkoutUrl) {
+        // Fallback: redirect to Paddle checkout page
         window.open(data.checkoutUrl, "_blank");
       } else {
         alert("Failed to create checkout. Please try again or contact hello@reachthesoul.org");
@@ -66,6 +78,20 @@ export default function BillingPage() {
     window.open("mailto:hello@reachthesoul.org?subject=Add-on: " + encodeURIComponent(addOn?.name ?? "") + "&body=Hi, I would like to set up the " + encodeURIComponent(addOn?.name ?? "") + " add-on for our organization.", "_blank");
   };
 
+  // Format date for subscription display
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "—";
+    try {
+      return new Date(dateStr).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return "—";
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6 max-w-6xl">
       <div>
@@ -73,7 +99,20 @@ export default function BillingPage() {
         <p className="text-xs text-muted-foreground mt-0.5">Manage your subscription and monitor usage.</p>
       </div>
 
-      {/* Current plan */}
+      {/* Success banner */}
+      {upgradedPlan && (
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 border border-green-200">
+          <CheckCircle size={18} className="text-green-600 shrink-0" />
+          <div>
+            <p className="text-xs font-semibold text-green-900">Subscription activated!</p>
+            <p className="text-[11px] text-green-700 mt-0.5">
+              Your plan has been upgraded. It may take a few moments for all features to activate.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Current plan + Subscription status */}
       <Card className="border-2 shadow-none" style={{ borderColor: currentConfig.color + "40" }}>
         <CardContent className="p-5">
           <div className="flex items-center justify-between flex-wrap gap-4">
@@ -100,6 +139,79 @@ export default function BillingPage() {
               )}
             </div>
           </div>
+
+          {/* Subscription details — only show if active subscription exists */}
+          {subscription && subscription.provider && currentPlan !== "free" && (
+            <div className="mt-4 pt-4 border-t border-muted/30">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {/* Status */}
+                <div className="flex items-center gap-2">
+                  {subscription.status === "active" ? (
+                    <CheckCircle size={14} className="text-green-600 shrink-0" />
+                  ) : subscription.status === "past_due" ? (
+                    <AlertTriangle size={14} className="text-amber-600 shrink-0" />
+                  ) : (
+                    <Clock size={14} className="text-muted-foreground shrink-0" />
+                  )}
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Status</p>
+                    <p className={cn(
+                      "text-xs font-medium capitalize",
+                      subscription.status === "active" && "text-green-700",
+                      subscription.status === "past_due" && "text-amber-700",
+                      subscription.status === "canceled" && "text-red-700",
+                    )}>
+                      {subscription.status === "past_due" ? "Past Due" : subscription.status ?? "Active"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Provider */}
+                <div className="flex items-center gap-2">
+                  <CreditCard size={14} className="text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Provider</p>
+                    <p className="text-xs font-medium text-foreground capitalize">{subscription.provider}</p>
+                  </div>
+                </div>
+
+                {/* Next billing */}
+                <div className="flex items-center gap-2">
+                  <RefreshCw size={14} className="text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {subscription.cancelAtPeriodEnd ? "Access Until" : "Renews On"}
+                    </p>
+                    <p className="text-xs font-medium text-foreground">
+                      {formatDate(subscription.currentPeriodEnd)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Cancel status */}
+                {subscription.cancelAtPeriodEnd && (
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-amber-600 shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-muted-foreground">Notice</p>
+                      <p className="text-xs font-medium text-amber-700">Cancels at period end</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Past due warning */}
+              {subscription.status === "past_due" && (
+                <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                  <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-800">
+                    Your last payment failed. Please update your payment method to avoid service interruption.
+                    Contact <a href="mailto:hello@reachthesoul.org" className="underline font-medium">hello@reachthesoul.org</a> for help.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -283,7 +395,7 @@ export default function BillingPage() {
                 {/* Add-ons row */}
                 <tr><td colSpan={5} className="px-3 py-2 bg-muted/20 font-semibold text-foreground text-[11px] uppercase tracking-wider">Add-ons (bring your own provider)</td></tr>
                 <tr className="border-t border-muted/30">
-                  <td className="p-3 text-foreground">AI \u2014 Bring Your Own Key</td>
+                  <td className="p-3 text-foreground">AI — Bring Your Own Key</td>
                   {tierOrder.map(t => <td key={t} className="text-center p-3"><span className="text-[10px] text-blue-600 font-medium">$29 setup</span></td>)}
                 </tr>
                 <tr className="border-t border-muted/30 bg-muted/5">

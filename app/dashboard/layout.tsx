@@ -9,6 +9,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { useOrgStore } from "@/store/org-store";
 import { usePresenceStore } from "@/store/presence-store";
 import AuthProvider from "@/components/auth/AuthProvider";
+import { PaddleProvider } from "@/components/billing/PaddleProvider";
 import { UsageBanner } from "@/components/feature-gate/UsageBanner";
 import type { UserRole } from "@/types";
 
@@ -118,7 +119,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <DashboardShell>{children}</DashboardShell>
+      <PaddleProvider>
+        <DashboardShell>{children}</DashboardShell>
+      </PaddleProvider>
     </AuthProvider>
   );
 }
