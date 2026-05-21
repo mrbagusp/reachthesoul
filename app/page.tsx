@@ -71,8 +71,9 @@ const STYLES = `
     nav.scrolled { background: rgba(15,27,45,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.08); }
     .nav-inner { display: flex; align-items: center; justify-content: space-between; }
     .nav-logo { display: flex; align-items: center; gap: 10px; }
-    .nav-logo-icon { width: 36px; height: 36px; background: var(--teal); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-    .nav-logo-icon svg { width: 18px; height: 18px; fill: var(--navy); }
+    .nav-logo-icon { width: 36px; height: 36px; background: var(--navy-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+    .nav-logo-icon::before { content: ''; position: absolute; left: 6px; top: 25%; bottom: 25%; width: 3px; background: var(--teal); border-radius: 2px; }
+    .nav-logo-icon span { font-family: var(--font-body); font-weight: 700; font-size: 12px; color: var(--white); letter-spacing: 0.5px; margin-left: 2px; }
     .nav-logo-text { font-family: var(--font-display); font-size: 18px; color: var(--white); }
     .nav-links { display: flex; align-items: center; gap: 32px; }
     .nav-links a { color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 500; transition: color 0.2s; }
@@ -182,8 +183,9 @@ const STYLES = `
     .footer-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 40px; flex-wrap: wrap; margin-bottom: 32px; }
     .footer-brand { max-width: 280px; }
     .footer-brand .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-    .footer-brand .logo-icon { width: 32px; height: 32px; background: var(--teal); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-    .footer-brand .logo-icon svg { width: 14px; height: 14px; fill: var(--navy); }
+    .footer-brand .logo-icon { width: 32px; height: 32px; background: var(--navy-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+    .footer-brand .logo-icon::before { content: ''; position: absolute; left: 5px; top: 25%; bottom: 25%; width: 2px; background: var(--teal); border-radius: 2px; }
+    .footer-brand .logo-icon span { font-family: var(--font-body); font-weight: 700; font-size: 10px; color: var(--white); letter-spacing: 0.5px; margin-left: 1px; }
     .footer-brand .logo-text { font-family: var(--font-display); font-size: 16px; color: var(--white); }
     .footer-brand p { font-size: 13px; color: var(--gray-400); line-height: 1.7; }
     .footer-links { display: flex; gap: 48px; }
@@ -238,7 +240,7 @@ const BODY = `
 <nav id="nav">
   <div class="container nav-inner">
     <a href="#" class="nav-logo">
-      <div class="nav-logo-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+      <div class="nav-logo-icon"><span>RTS</span></div>
       <span class="nav-logo-text">ReachTheSoul</span>
     </a>
     <div class="nav-links">
@@ -266,7 +268,7 @@ const BODY = `
     </div>
     <div class="hero-stats">
       <div class="hero-stat"><div class="num">24/7</div><div class="label">AI First Response</div></div>
-      <div class="hero-stat"><div class="num">3 min</div><div class="label">Avg. Response Time</div></div>
+      <div class="hero-stat"><div class="num">&lt; 1 min</div><div class="label">AI Response Time</div></div>
       <div class="hero-stat"><div class="num">100%</div><div class="label">Follow-up Rate</div></div>
     </div>
   </div>
@@ -558,7 +560,7 @@ const BODY = `
     <div class="footer-top">
       <div class="footer-brand">
         <div class="logo">
-          <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+          <div class="logo-icon"><span>RTS</span></div>
           <span class="logo-text">ReachTheSoul</span>
         </div>
         <p>AI-powered prayer and counseling platform for churches and ministries. Every prayer heard. Every soul cared for.</p>

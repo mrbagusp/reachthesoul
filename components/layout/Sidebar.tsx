@@ -93,8 +93,9 @@ export function Sidebar({ role, userName, onLogout, mobileOpen, onMobileClose }:
     )}>
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 py-5 border-b border-sidebar-border">
-        <div className="w-8 h-8 rounded-md bg-sidebar-primary flex items-center justify-center flex-shrink-0">
-          <MessageSquare size={16} className="text-white" />
+        <div className="w-8 h-8 rounded-md bg-[#1A2942] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+          <div className="absolute left-[5px] top-[25%] bottom-[25%] w-[2px] rounded-full bg-[#2DD4BF]" />
+          <span className="text-[10px] font-bold text-white tracking-wide ml-[2px]">RTS</span>
         </div>
         <div className="flex-1">
           <p className="text-xs font-bold text-white leading-tight">{activeOrg?.name ?? "ReachTheSoul"}</p>
