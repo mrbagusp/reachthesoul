@@ -209,8 +209,9 @@ export default function RegisterPage() {
       {/* Left branding panel — DESKTOP: full sidebar, MOBILE: compact header */}
       <div className="flex flex-col lg:w-[460px] shrink-0 p-6 lg:p-10 lg:border-r border-sidebar-border relative overflow-hidden">
         <div className="flex items-center gap-3 lg:mb-auto">
-          <div className="w-9 h-9 rounded-xl bg-sidebar-primary flex items-center justify-center">
-            <Heart size={16} className="text-white" />
+          <div className="w-9 h-9 rounded-xl bg-[#1A2942] flex items-center justify-center relative overflow-hidden">
+            <div className="absolute left-[6px] top-[25%] bottom-[25%] w-[2px] rounded-full bg-[#2DD4BF]" />
+            <span className="text-[11px] font-bold text-white tracking-wide ml-[2px]">RTS</span>
           </div>
           <div>
             <p className="text-sm font-bold text-white leading-tight">ReachTheSoul</p>
