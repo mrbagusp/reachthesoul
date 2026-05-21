@@ -149,6 +149,34 @@ function extractEmail(payload: any): string {
   );
 }
 
+// ─── Timezone helpers for smart notifications ──────────────────────
+
+const COUNTRY_TIMEZONE: Record<string, string> = {
+  US: "America/New_York", GB: "Europe/London", AU: "Australia/Sydney",
+  SG: "Asia/Singapore", ID: "Asia/Jakarta", MY: "Asia/Kuala_Lumpur",
+  PH: "Asia/Manila", IN: "Asia/Kolkata", KR: "Asia/Seoul",
+  JP: "Asia/Tokyo", DE: "Europe/Berlin", FR: "Europe/Paris",
+  BR: "America/Sao_Paulo", CA: "America/Toronto", NZ: "Pacific/Auckland",
+  ZA: "Africa/Johannesburg", NG: "Africa/Lagos", KE: "Africa/Nairobi",
+  AE: "Asia/Dubai", HK: "Asia/Hong_Kong", TW: "Asia/Taipei",
+  TH: "Asia/Bangkok", VN: "Asia/Ho_Chi_Minh",
+};
+
+function getTimezoneFromCountry(countryCode: string): string {
+  return COUNTRY_TIMEZONE[countryCode] ?? "UTC";
+}
+
+function isLikelySleeping(tz: string): boolean {
+  try {
+    const hour = parseInt(
+      new Date().toLocaleString("en-US", { timeZone: tz, hour: "numeric", hour12: false })
+    );
+    return hour >= 22 || hour < 7; // 10PM - 7AM
+  } catch {
+    return false;
+  }
+}
+
 // ─── Main handler ────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -177,12 +205,17 @@ export async function POST(req: NextRequest) {
     const sub = payload.data ?? {};
     const customerEmail = extractEmail(payload);
 
+    const customerCountry = payload.data?.address?.country_code ?? payload.data?.customer?.address?.country_code ?? "??";
+    const customerTimezone = getTimezoneFromCountry(customerCountry);
+    const nowLocal = new Date().toLocaleString("en-US", { timeZone: customerTimezone, hour: "2-digit", minute: "2-digit", hour12: true });
+    const isAsleep = isLikelySleeping(customerTimezone);
+
     switch (eventType) {
       // ─── Transaction completed (one-time or first subscription payment) ──
       case "transaction.completed": {
         await updateOrgPlan(orgId, plan, sub);
         await notifyAdmin(
-          `🎉 *NEW PAYMENT (Paddle)*\n\nOrg: *${orgId}*\nPlan: *${plan.toUpperCase()}*\nEmail: ${customerEmail}\n\n⚡ Customer may need WhatsApp setup.\n🔗 https://reachthesoul.org/dashboard/platform`
+          `🎉 *NEW PAYMENT (Paddle)*\n\nOrg: *${orgId}*\nPlan: *${plan.toUpperCase()}*\nEmail: ${customerEmail}\nCountry: ${customerCountry}\nTheir local time: ${nowLocal}\n\n${isAsleep ? "😴 Customer likely asleep — setup by their morning." : "⚡ Customer is ONLINE — setup ASAP for best impression!"}\n\n📋 Action: WhatsApp setup needed.\n🔗 https://reachthesoul.org/dashboard/platform`
         );
         break;
       }
@@ -198,7 +231,7 @@ export async function POST(req: NextRequest) {
       case "subscription.activated": {
         await updateOrgPlan(orgId, plan, sub);
         await notifyAdmin(
-          `🎉 *NEW SUBSCRIPTION (Paddle)*\n\nOrg: *${orgId}*\nPlan: *${plan.toUpperCase()}*\nEmail: ${customerEmail}\nStatus: ${sub.status}\n\n⚡ Customer may need WhatsApp setup.\n🔗 https://reachthesoul.org/dashboard/platform`
+          `🎉 *NEW SUBSCRIPTION (Paddle)*\n\nOrg: *${orgId}*\nPlan: *${plan.toUpperCase()}*\nEmail: ${customerEmail}\nCountry: ${customerCountry}\nTheir local time: ${nowLocal}\n\n${isAsleep ? "😴 Customer likely asleep — setup by their morning." : "⚡ Customer is ONLINE — setup ASAP for best impression!"}\n\n📋 Action: WhatsApp setup needed.\n🔗 https://reachthesoul.org/dashboard/platform`
         );
         break;
       }

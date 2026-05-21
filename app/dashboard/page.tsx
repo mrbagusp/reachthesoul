@@ -7,6 +7,8 @@ import { TicketStatusBadge, TicketPriorityBadge } from "@/components/tickets/Tic
 import { useTickets } from "@/hooks/use-firestore-tickets";
 import { useRespondents } from "@/hooks/use-firestore-respondents";
 import { useAuthStore } from "@/store/auth-store";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import { UpgradeWelcome } from "@/components/onboarding/UpgradeWelcome";
 import { cn } from "@/lib/utils";
 
 export default function OverviewPage() {
@@ -62,6 +64,12 @@ export default function OverviewPage() {
           </Button>
         </div>
       </div>
+
+      {/* Post-upgrade welcome banner */}
+      <UpgradeWelcome />
+
+      {/* Onboarding wizard — shows until all steps complete */}
+      <OnboardingWizard />
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
