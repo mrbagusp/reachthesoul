@@ -39,6 +39,14 @@ const PROGRESS_CONFIG: Record<string, { color: string; bg: string; border: strin
 
 const PROGRESS_FALLBACK = { color: "text-gray-600", bg: "bg-gray-100", border: "border-gray-300", desc: "" };
 
+// Normalize progress — can be string (legacy) or object { currentStep, steps, ... } (new seed data)
+function getProgressStep(progress: any): string {
+  if (!progress) return "";
+  if (typeof progress === "string") return progress;
+  if (typeof progress === "object" && progress.currentStep) return progress.currentStep;
+  return "";
+}
+
 // Small helper to fetch messages for a ticket inline
 function TicketMessages({ ticketId }: { ticketId: string }) {
   const { messages, loading } = useMessages(ticketId);
@@ -181,7 +189,7 @@ export default function RespondentProfilePage() {
     setEditNotes(respondent.notes ?? "");
     setEditAge(respondent.age?.toString() ?? "");
     setEditCity(respondent.city ?? "");
-    setEditProgress(respondent.progress ?? "");
+    setEditProgress(getProgressStep(respondent.progress));
     setEditCategories(respondent.problemCategories ?? []);
     setEditProgramSource(respondent.programSource ?? "");
     setEditing(true);
@@ -220,8 +228,8 @@ export default function RespondentProfilePage() {
   const removeCategory = (cat: string) =>
     setEditCategories((prev) => prev.filter((c) => c !== cat));
 
-  const currentProgressIdx = respondent.progress
-    ? DEFAULT_PROGRESS_STEPS.indexOf(respondent.progress)
+  const currentProgressIdx = getProgressStep(respondent.progress)
+    ? DEFAULT_PROGRESS_STEPS.indexOf(getProgressStep(respondent.progress))
     : -1;
 
   return (
@@ -269,14 +277,14 @@ export default function RespondentProfilePage() {
                   <div className={cn("w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold", respondent.isBlocked ? "bg-red-100 text-red-600" : "bg-primary/10 text-primary")}>
                     {respondent.isBlocked ? <ShieldOff size={22} /> : respondent.fullName.charAt(0)}
                   </div>
-                  {respondent.progress && (
+                  {getProgressStep(respondent.progress) && (
                     <span className={cn(
                       "absolute -bottom-1 -right-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full border",
-                      (PROGRESS_CONFIG[respondent.progress] ?? PROGRESS_FALLBACK).bg,
-                      (PROGRESS_CONFIG[respondent.progress] ?? PROGRESS_FALLBACK).border,
-                      (PROGRESS_CONFIG[respondent.progress] ?? PROGRESS_FALLBACK).color,
+                      (PROGRESS_CONFIG[getProgressStep(respondent.progress)] ?? PROGRESS_FALLBACK).bg,
+                      (PROGRESS_CONFIG[getProgressStep(respondent.progress)] ?? PROGRESS_FALLBACK).border,
+                      (PROGRESS_CONFIG[getProgressStep(respondent.progress)] ?? PROGRESS_FALLBACK).color,
                     )}>
-                      {respondent.progress}
+                      {getProgressStep(respondent.progress)}
                     </span>
                   )}
                 </div>
@@ -590,7 +598,7 @@ export default function RespondentProfilePage() {
               <CardContent className="px-4 pb-4">
                 <div className="flex flex-col gap-2">
                   {DEFAULT_PROGRESS_STEPS.map((step, idx) => {
-                    const isActive  = respondent.progress === step;
+                    const isActive  = getProgressStep(respondent.progress) === step;
                     const isDone    = currentProgressIdx > idx;
                     const cfg       = (PROGRESS_CONFIG[step] ?? PROGRESS_FALLBACK);
                     return (
