@@ -114,61 +114,61 @@ service cloud.firestore {
     // Pattern: members can read, admin/supervisor can write.
 
     match /respondents/{docId} {
-      allow read:   if isSignedIn() && isOrgMember(existingOrgId());
+      allow read:   if isSignedIn() && (isOrgMember(existingOrgId()) || isPlatformAdmin());
       allow create: if isSignedIn() && isOrgMember(incomingOrgId());
       allow update: if isSignedIn() && isOrgMember(existingOrgId());
-      allow delete: if isSignedIn() && isOrgAdminOrSupervisor(existingOrgId());
+      allow delete: if isSignedIn() && (isOrgAdminOrSupervisor(existingOrgId()) || isPlatformAdmin());
     }
 
     match /tickets/{docId} {
-      allow read:   if isSignedIn() && isOrgMember(existingOrgId());
+      allow read:   if isSignedIn() && (isOrgMember(existingOrgId()) || isPlatformAdmin());
       allow create: if isSignedIn() && isOrgMember(incomingOrgId());
       allow update: if isSignedIn() && isOrgMember(existingOrgId());
-      allow delete: if isSignedIn() && isOrgAdmin(existingOrgId());
+      allow delete: if isSignedIn() && (isOrgAdmin(existingOrgId()) || isPlatformAdmin());
 
       // Messages subcollection — same org scope as parent ticket
       match /messages/{msgId} {
-        allow read:   if isSignedIn() && isOrgMember(
+        allow read:   if isSignedIn() && (isOrgMember(
           get(/databases/$(database)/documents/tickets/$(docId)).data.orgId
-        );
+        ) || isPlatformAdmin());
         allow create: if isSignedIn() && isOrgMember(
           get(/databases/$(database)/documents/tickets/$(docId)).data.orgId
         );
         allow update: if false; // Messages are immutable
-        allow delete: if false;
+        allow delete: if isPlatformAdmin(); // Only platform admin can delete messages (org cleanup)
       }
     }
 
     match /categories/{docId} {
-      allow read:  if isSignedIn() && isOrgMember(existingOrgId());
+      allow read:  if isSignedIn() && (isOrgMember(existingOrgId()) || isPlatformAdmin());
       allow create: if isSignedIn() && isOrgAdmin(incomingOrgId());
       allow update: if isSignedIn() && isOrgAdmin(existingOrgId());
-      allow delete: if isSignedIn() && isOrgAdmin(existingOrgId());
+      allow delete: if isSignedIn() && (isOrgAdmin(existingOrgId()) || isPlatformAdmin());
     }
 
     match /lead_sources/{docId} {
-      allow read:  if isSignedIn() && isOrgMember(existingOrgId());
+      allow read:  if isSignedIn() && (isOrgMember(existingOrgId()) || isPlatformAdmin());
       allow create: if isSignedIn() && (
         isOrgAdmin(incomingOrgId()) || isOrgMember(incomingOrgId()) // seed on first load
       );
       allow update: if isSignedIn() && isOrgAdmin(existingOrgId());
-      allow delete: if isSignedIn() && isOrgAdmin(existingOrgId());
+      allow delete: if isSignedIn() && (isOrgAdmin(existingOrgId()) || isPlatformAdmin());
     }
 
     match /program_sources/{docId} {
-      allow read:  if isSignedIn() && isOrgMember(existingOrgId());
+      allow read:  if isSignedIn() && (isOrgMember(existingOrgId()) || isPlatformAdmin());
       allow create: if isSignedIn() && (
         isOrgAdmin(incomingOrgId()) || isOrgMember(incomingOrgId()) // seed on first load
       );
       allow update: if isSignedIn() && isOrgAdmin(existingOrgId());
-      allow delete: if isSignedIn() && isOrgAdmin(existingOrgId());
+      allow delete: if isSignedIn() && (isOrgAdmin(existingOrgId()) || isPlatformAdmin());
     }
 
     match /interaction_outcomes/{docId} {
-      allow read:  if isSignedIn() && isOrgMember(existingOrgId());
+      allow read:  if isSignedIn() && (isOrgMember(existingOrgId()) || isPlatformAdmin());
       allow create: if isSignedIn() && isOrgAdmin(incomingOrgId());
       allow update: if isSignedIn() && isOrgAdmin(existingOrgId());
-      allow delete: if isSignedIn() && isOrgAdmin(existingOrgId());
+      allow delete: if isSignedIn() && (isOrgAdmin(existingOrgId()) || isPlatformAdmin());
     }
 
     // ─── Counters (ticket number sequence) ────────────────────────
@@ -188,19 +188,19 @@ service cloud.firestore {
     // ─── Notifications ────────────────────────────────────────────
 
     match /notifications/{docId} {
-      allow read:  if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read:  if isSignedIn() && (resource.data.userId == request.auth.uid || isPlatformAdmin());
       allow create: if isSignedIn();
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isPlatformAdmin());
     }
 
     // ─── Call Records ─────────────────────────────────────────────
 
     match /calls/{docId} {
-      allow read:   if isSignedIn() && isOrgMember(existingOrgId());
+      allow read:   if isSignedIn() && (isOrgMember(existingOrgId()) || isPlatformAdmin());
       allow create: if isSignedIn() && isOrgMember(incomingOrgId());
       allow update: if isSignedIn() && isOrgMember(existingOrgId());
-      allow delete: if isSignedIn() && isOrgAdmin(existingOrgId());
+      allow delete: if isSignedIn() && (isOrgAdmin(existingOrgId()) || isPlatformAdmin());
     }
 
     // ─── Presence ─────────────────────────────────────────────────

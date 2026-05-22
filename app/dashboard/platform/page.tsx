@@ -704,7 +704,7 @@ export default function PlatformAdminPage() {
                             const collectionsToDelete = [
                               "respondents", "tickets", "categories",
                               "lead_sources", "program_sources", "interaction_outcomes",
-                              "calls", "notifications",
+                              "calls",
                             ];
 
                             for (const colName of collectionsToDelete) {
