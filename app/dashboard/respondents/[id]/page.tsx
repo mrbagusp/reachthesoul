@@ -25,14 +25,19 @@ import type { Respondent, RespondentProgress } from "@/types";
 import { DEFAULT_PROGRESS_STEPS } from "@/types";
 
 // Progress step config
-const PROGRESS_CONFIG: Record<RespondentProgress, { color: string; bg: string; border: string; desc: string }> = {
-  Data:       { color: "text-slate-600",   bg: "bg-slate-100",   border: "border-slate-300",  desc: "Identity recorded" },
-  Prayer:    { color: "text-blue-600",    bg: "bg-blue-50",     border: "border-blue-200",   desc: "Prayed for" },
-  Counseling: { color: "text-amber-600",   bg: "bg-amber-50",    border: "border-amber-200",  desc: "In counseling" },
+const PROGRESS_CONFIG: Record<string, { color: string; bg: string; border: string; desc: string }> = {
+  Data:         { color: "text-slate-600",   bg: "bg-slate-100",   border: "border-slate-300",  desc: "Identity recorded" },
+  Doa:          { color: "text-blue-600",    bg: "bg-blue-50",     border: "border-blue-200",   desc: "Prayed for" },
+  Prayer:       { color: "text-blue-600",    bg: "bg-blue-50",     border: "border-blue-200",   desc: "Prayed for" },
+  Konseling:    { color: "text-amber-600",   bg: "bg-amber-50",    border: "border-amber-200",  desc: "In counseling" },
+  Counseling:   { color: "text-amber-600",   bg: "bg-amber-50",    border: "border-amber-200",  desc: "In counseling" },
+  Rekomitmen:   { color: "text-purple-600",  bg: "bg-purple-50",   border: "border-purple-200", desc: "Recommitment made" },
   Recommitment: { color: "text-purple-600",  bg: "bg-purple-50",   border: "border-purple-200", desc: "Recommitment made" },
-  Salvation:  { color: "text-emerald-600", bg: "bg-emerald-50",  border: "border-emerald-200",desc: "Accepted salvation" },
-  POP:        { color: "text-orange-600",  bg: "bg-orange-50",   border: "border-orange-200", desc: "Part of the Parish" },
+  Salvation:    { color: "text-emerald-600", bg: "bg-emerald-50",  border: "border-emerald-200",desc: "Accepted salvation" },
+  POP:          { color: "text-orange-600",  bg: "bg-orange-50",   border: "border-orange-200", desc: "Part of the Parish" },
 };
+
+const PROGRESS_FALLBACK = { color: "text-gray-600", bg: "bg-gray-100", border: "border-gray-300", desc: "" };
 
 // Small helper to fetch messages for a ticket inline
 function TicketMessages({ ticketId }: { ticketId: string }) {
@@ -52,7 +57,7 @@ function TicketMessages({ ticketId }: { ticketId: string }) {
               {new Date(msg.createdAt).toLocaleString("en-US", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
             </span>
           </div>
-          <p className="text-muted-foreground leading-relaxed">{msg.content}</p>
+          <p className="text-muted-foreground leading-relaxed">{msg.content ?? (msg as any).text ?? ""}</p>
         </div>
       ))}
     </>
@@ -267,9 +272,9 @@ export default function RespondentProfilePage() {
                   {respondent.progress && (
                     <span className={cn(
                       "absolute -bottom-1 -right-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full border",
-                      PROGRESS_CONFIG[respondent.progress].bg,
-                      PROGRESS_CONFIG[respondent.progress].border,
-                      PROGRESS_CONFIG[respondent.progress].color,
+                      (PROGRESS_CONFIG[respondent.progress] ?? PROGRESS_FALLBACK).bg,
+                      (PROGRESS_CONFIG[respondent.progress] ?? PROGRESS_FALLBACK).border,
+                      (PROGRESS_CONFIG[respondent.progress] ?? PROGRESS_FALLBACK).color,
                     )}>
                       {respondent.progress}
                     </span>
@@ -368,8 +373,8 @@ export default function RespondentProfilePage() {
                       <SelectContent>
                         {DEFAULT_PROGRESS_STEPS.map((s) => (
                           <SelectItem key={s} value={s}>
-                            <span className={cn("font-medium", PROGRESS_CONFIG[s].color)}>{s}</span>
-                            <span className="ml-2 text-muted-foreground text-[10px]">— {PROGRESS_CONFIG[s].desc}</span>
+                            <span className={cn("font-medium", (PROGRESS_CONFIG[s] ?? PROGRESS_FALLBACK).color)}>{s}</span>
+                            <span className="ml-2 text-muted-foreground text-[10px]">— {(PROGRESS_CONFIG[s] ?? PROGRESS_FALLBACK).desc}</span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -587,7 +592,7 @@ export default function RespondentProfilePage() {
                   {DEFAULT_PROGRESS_STEPS.map((step, idx) => {
                     const isActive  = respondent.progress === step;
                     const isDone    = currentProgressIdx > idx;
-                    const cfg       = PROGRESS_CONFIG[step];
+                    const cfg       = (PROGRESS_CONFIG[step] ?? PROGRESS_FALLBACK);
                     return (
                       <div key={step} className="flex items-center gap-2.5">
                         {/* Step circle */}
