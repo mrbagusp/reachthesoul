@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import {
   Building2, Users, Ticket, Crown, Search, ArrowUpRight,
   Calendar, TrendingUp, Shield, Globe, BarChart2, Eye,
-  ChevronDown, ChevronUp, Mail, Clock, Activity,
+  ChevronDown, ChevronUp, Mail, Clock, Activity, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -218,6 +218,7 @@ export default function PlatformAdminPage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"overview" | "orgs" | "users">("overview");
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
+  const [deletingOrg, setDeletingOrg] = useState<string | null>(null);
 
   // Check platform admin access
   useEffect(() => {
@@ -623,6 +624,142 @@ export default function PlatformAdminPage() {
                         <Mail size={11} /> {org.billingEmail}
                       </p>
                     </div>
+
+                    {/* Quick Actions */}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[10px] gap-1.5"
+                        onClick={async () => {
+                          try {
+                            const [{ doc, getDoc, updateDoc }, { db }] = await Promise.all([
+                              import("firebase/firestore"), import("@/lib/firebase"),
+                            ]);
+                            // Fetch org document
+                            const orgSnap = await getDoc(doc(db, "organizations", org.orgId));
+                            if (orgSnap.exists()) {
+                              const orgData = orgSnap.data();
+                              // Switch active org in store
+                              const { useOrgStore } = await import("@/store/org-store");
+                              useOrgStore.getState().setActiveOrg({ orgId: orgSnap.id, ...orgData } as any);
+                              // Update current user's context
+                              const { useAuthStore } = await import("@/store/auth-store");
+                              const currentUser = useAuthStore.getState().currentUser;
+                              if (currentUser) {
+                                useAuthStore.getState().setUser({
+                                  ...currentUser,
+                                  primaryOrgId: org.orgId,
+                                  role: "admin", // Platform admin always gets admin role
+                                });
+                              }
+                              // Navigate to dashboard
+                              router.push("/dashboard");
+                            }
+                          } catch (err) {
+                            console.error("Failed to switch to org:", err);
+                            alert("Failed to switch. Check console.");
+                          }
+                        }}
+                      >
+                        <Eye size={11} /> View as this Org
+                      </Button>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[10px] gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={async () => {
+                          const orgUsers = users.filter((u) => u.primaryOrgId === org.orgId);
+                          const confirmMsg =
+                            `⚠️ DELETE ORGANIZATION\n\n` +
+                            `Org: ${org.name} (${org.slug})\n` +
+                            `Plan: ${org.plan}\n` +
+                            `Users: ${orgUsers.length}\n` +
+                            `Respondents: ${org.usage.currentRespondents}\n\n` +
+                            `This will permanently delete:\n` +
+                            `• The organization document\n` +
+                            `• All respondents (${org.usage.currentRespondents})\n` +
+                            `• All tickets and messages\n` +
+                            `• All config (categories, lead sources, etc.)\n\n` +
+                            `User accounts will NOT be deleted.\n\n` +
+                            `Type the org slug "${org.slug}" to confirm:`;
+
+                          const typed = prompt(confirmMsg);
+                          if (typed !== org.slug) {
+                            if (typed !== null) alert("Slug didn't match. Deletion cancelled.");
+                            return;
+                          }
+
+                          setDeletingOrg(org.orgId);
+                          try {
+                            const [
+                              { doc, deleteDoc, collection, query, where, getDocs, writeBatch },
+                              { db },
+                            ] = await Promise.all([
+                              import("firebase/firestore"), import("@/lib/firebase"),
+                            ]);
+
+                            // Delete org-scoped collections in batches
+                            const collectionsToDelete = [
+                              "respondents", "tickets", "categories",
+                              "lead_sources", "program_sources", "interaction_outcomes",
+                              "calls", "notifications",
+                            ];
+
+                            for (const colName of collectionsToDelete) {
+                              const q = query(collection(db, colName), where("orgId", "==", org.orgId));
+                              const snap = await getDocs(q);
+                              if (snap.empty) continue;
+
+                              // Batch delete (max 500 per batch)
+                              let batch = writeBatch(db);
+                              let count = 0;
+                              for (const docSnap of snap.docs) {
+                                // If it's tickets, also delete subcollection messages
+                                if (colName === "tickets") {
+                                  const msgsSnap = await getDocs(collection(db, "tickets", docSnap.id, "messages"));
+                                  for (const msgDoc of msgsSnap.docs) {
+                                    batch.delete(msgDoc.ref);
+                                    count++;
+                                    if (count >= 490) { await batch.commit(); batch = writeBatch(db); count = 0; }
+                                  }
+                                }
+                                batch.delete(docSnap.ref);
+                                count++;
+                                if (count >= 490) { await batch.commit(); batch = writeBatch(db); count = 0; }
+                              }
+                              if (count > 0) await batch.commit();
+                            }
+
+                            // Delete counter doc
+                            try { await deleteDoc(doc(db, "counters", `${org.orgId}_tickets`)); } catch {}
+                            try { await deleteDoc(doc(db, "counters", `${org.slug}_tickets`)); } catch {}
+
+                            // Delete the org document itself
+                            await deleteDoc(doc(db, "organizations", org.orgId));
+
+                            // Remove from local state
+                            setOrgs((prev) => prev.filter((o) => o.orgId !== org.orgId));
+                            setExpandedOrg(null);
+                            alert(`✅ Organization "${org.name}" and all its data have been deleted.`);
+                          } catch (err) {
+                            console.error("Failed to delete org:", err);
+                            alert("Failed to delete. Check console for errors.");
+                          } finally {
+                            setDeletingOrg(null);
+                          }
+                        }}
+                        disabled={deletingOrg === org.orgId}
+                      >
+                        {deletingOrg === org.orgId ? (
+                          <><Clock size={11} className="animate-spin" /> Deleting...</>
+                        ) : (
+                          <><Trash2 size={11} /> Delete Org</>
+                        )}
+                      </Button>
+                    </div>
+
                     <div className="mt-3 flex gap-2">
                       <p className="text-[10px] font-medium text-foreground">Team members in this org:</p>
                     </div>
