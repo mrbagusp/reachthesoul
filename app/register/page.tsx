@@ -168,6 +168,14 @@ export default function RegisterPage() {
         }
       }
 
+      // 7. Seed dummy data (demo respondents + tickets) so dashboard isn't empty
+      try {
+        const { seedDummyData } = await import("@/lib/seed-dummy-data");
+        await seedDummyData(db, slug, uid);
+      } catch (seedErr) {
+        console.warn("[Register] Dummy data seeding failed (non-critical):", seedErr);
+      }
+
       setDone(true);
       setTimeout(() => router.push("/dashboard"), 2000);
 
