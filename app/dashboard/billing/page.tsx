@@ -276,7 +276,7 @@ export default function BillingPage() {
             <span className="font-semibold text-foreground">Early Ministry Partner rates.</span>{" "}
             Churches that join now <span className="font-semibold text-[#0F8A74]">keep their pricing permanently</span> as founding partners.
           </p>
-        </div>Compare plans</h3>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           {tierOrder.map((tier) => {
             const config = PLAN_CONFIGS[tier];
