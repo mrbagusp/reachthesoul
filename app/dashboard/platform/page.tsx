@@ -9,6 +9,7 @@ import {
   Building2, Users, Ticket, Crown, Search, ArrowUpRight,
   Calendar, TrendingUp, Shield, Globe, BarChart2, Eye,
   ChevronDown, ChevronUp, Mail, Clock, Activity, Trash2,
+  PhoneCall, Settings, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,208 @@ const PLAN_COLORS: Record<string, string> = {
 };
 
 // ─── Channel Config Panel (superadmin view per org) ──────────────────────────
+// ─── Call Integration Setup (Platform Admin Only) ─────────────────────────
+
+type CallProvider = "twilio" | "vonage" | "wa_calling" | "sip" | "none";
+
+const CALL_PROVIDERS: { id: CallProvider; label: string; fields: { key: string; label: string; placeholder: string; type?: string }[] }[] = [
+  {
+    id: "twilio", label: "Twilio",
+    fields: [
+      { key: "twilioSid",    label: "Account SID",    placeholder: "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" },
+      { key: "twilioToken",  label: "Auth Token",     placeholder: "your_twilio_auth_token", type: "password" },
+      { key: "twilioNumber", label: "Phone Number",   placeholder: "+1234567890" },
+    ],
+  },
+  {
+    id: "vonage", label: "Vonage (Nexmo)",
+    fields: [
+      { key: "vonageKey",    label: "API Key",        placeholder: "your_vonage_key" },
+      { key: "vonageSecret", label: "API Secret",     placeholder: "your_vonage_secret", type: "password" },
+      { key: "vonageAppId",  label: "Application ID", placeholder: "your_vonage_app_id" },
+      { key: "vonageNumber", label: "Phone Number",   placeholder: "+1234567890" },
+    ],
+  },
+  {
+    id: "wa_calling", label: "WhatsApp Calling (Beta)",
+    fields: [
+      { key: "waToken",   label: "Access Token",   placeholder: "your_wa_access_token", type: "password" },
+      { key: "waPhoneId", label: "Phone Number ID", placeholder: "your_phone_number_id" },
+    ],
+  },
+  {
+    id: "sip", label: "Custom SIP / VOIP PBX",
+    fields: [
+      { key: "sipServer",   label: "SIP Server",  placeholder: "sip.yourpbx.com" },
+      { key: "sipPort",     label: "Port",         placeholder: "5060" },
+      { key: "sipUser",     label: "Username",     placeholder: "your_sip_user" },
+      { key: "sipPassword", label: "Password",     placeholder: "your_sip_password", type: "password" },
+    ],
+  },
+];
+
+const WEBHOOK_URLS: Record<string, { voice: string; status: string }> = {
+  twilio:     { voice: "https://reachthesoul.org/api/calls/twiml", status: "https://reachthesoul.org/api/calls/webhook" },
+  vonage:     { voice: "https://reachthesoul.org/api/calls/vonage-answer", status: "https://reachthesoul.org/api/calls/vonage-event" },
+  wa_calling: { voice: "N/A (push-based)", status: "https://reachthesoul.org/api/calls/webhook" },
+  sip:        { voice: "https://reachthesoul.org/api/calls/twiml", status: "https://reachthesoul.org/api/calls/webhook" },
+};
+
+function CallIntegrationPanel({ orgId, orgName }: { orgId: string; orgName: string }) {
+  const [callConfig, setCallConfig] = useState<Record<string, any>>({});
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (loaded) return;
+    (async () => {
+      const [{ doc, getDoc }, { db }] = await Promise.all([
+        import("firebase/firestore"), import("@/lib/firebase"),
+      ]);
+      const orgDoc = await getDoc(doc(db, "organizations", orgId));
+      if (orgDoc.exists()) {
+        setCallConfig(orgDoc.data()?.callConfig ?? {});
+      }
+      setLoaded(true);
+    })();
+  }, [orgId, loaded]);
+
+  const generateKey = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let key = "rts_call_";
+    for (let i = 0; i < 32; i++) key += chars.charAt(Math.floor(Math.random() * chars.length));
+    updateField("callIntegrationKey", key);
+  };
+
+  const updateField = (key: string, value: any) => {
+    setCallConfig((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const saveConfig = async () => {
+    setSaving(true);
+    try {
+      const [{ doc, updateDoc }, { db }] = await Promise.all([
+        import("firebase/firestore"), import("@/lib/firebase"),
+      ]);
+      await updateDoc(doc(db, "organizations", orgId), {
+        callConfig: { ...callConfig, updatedAt: new Date().toISOString() },
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error("Failed to save call config:", err);
+      alert("Failed to save. Check console.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isActive = !!callConfig.callIntegrationKey && callConfig.isActive !== false;
+  const selectedProvider = (callConfig.provider ?? "none") as CallProvider;
+  const providerConfig = CALL_PROVIDERS.find((p) => p.id === selectedProvider);
+  const webhookUrls = WEBHOOK_URLS[selectedProvider];
+
+  return (
+    <div className="mt-4 border border-border rounded-lg overflow-hidden">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-muted/30 hover:bg-muted/50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <PhoneCall size={12} className="text-muted-foreground" />
+          <span className="text-[10px] font-semibold text-foreground">Call Integration Setup</span>
+          {isActive ? (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium">
+              Active \u2014 {CALL_PROVIDERS.find((p) => p.id === selectedProvider)?.label ?? "Unknown"}
+            </span>
+          ) : (
+            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">Not activated</span>
+          )}
+        </div>
+        {expanded ? <ChevronUp size={12} className="text-muted-foreground" /> : <ChevronDown size={12} className="text-muted-foreground" />}
+      </button>
+
+      {expanded && loaded && (
+        <div className="p-3 space-y-3">
+          {/* Activation Key */}
+          <div>
+            <label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Activation Key (secret)</label>
+            <div className="flex gap-2">
+              <input type="text" value={callConfig.callIntegrationKey ?? ""} onChange={(e) => updateField("callIntegrationKey", e.target.value)} className="flex-1 h-7 text-[10px] font-mono px-2 border rounded bg-background" placeholder="Not generated" />
+              <Button variant="outline" size="sm" className="h-7 text-[9px]" onClick={generateKey}>Generate</Button>
+            </div>
+          </div>
+
+          {/* Provider selector */}
+          <div>
+            <label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Provider</label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {CALL_PROVIDERS.map((p) => (
+                <button key={p.id} onClick={() => updateField("provider", p.id)} className={`text-[10px] px-2.5 py-1.5 rounded border text-left transition-all ${selectedProvider === p.id ? "border-primary bg-primary/5 font-semibold text-foreground" : "border-border text-muted-foreground hover:border-primary/30"}`}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Provider-specific fields */}
+          {providerConfig && (
+            <div className="space-y-2">
+              <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide">{providerConfig.label} Credentials</p>
+              {providerConfig.fields.map((field) => (
+                <div key={field.key}>
+                  <label className="text-[9px] text-muted-foreground mb-0.5 block">{field.label}</label>
+                  <input type={field.type ?? "text"} value={callConfig[field.key] ?? ""} onChange={(e) => updateField(field.key, e.target.value)} className="w-full h-7 text-[10px] px-2 border rounded bg-background font-mono" placeholder={field.placeholder} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* General settings */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={callConfig.isActive ?? false} onChange={(e) => updateField("isActive", e.target.checked)} className="rounded" /><span className="text-[10px] text-foreground">Active</span></label>
+            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={callConfig.recordCalls !== false} onChange={(e) => updateField("recordCalls", e.target.checked)} className="rounded" /><span className="text-[10px] text-foreground">Record calls</span></label>
+            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={callConfig.inboundEnabled !== false} onChange={(e) => updateField("inboundEnabled", e.target.checked)} className="rounded" /><span className="text-[10px] text-foreground">Inbound</span></label>
+            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={callConfig.outboundEnabled !== false} onChange={(e) => updateField("outboundEnabled", e.target.checked)} className="rounded" /><span className="text-[10px] text-foreground">Outbound</span></label>
+          </div>
+
+          {/* Ring timeout & max concurrent */}
+          <div className="flex items-center gap-3">
+            <div><label className="text-[9px] text-muted-foreground mb-0.5 block">Ring timeout (sec)</label><input type="number" value={callConfig.ringTimeout ?? 25} onChange={(e) => updateField("ringTimeout", parseInt(e.target.value) || 25)} className="w-20 h-7 text-[10px] px-2 border rounded bg-background" min={10} max={60} /></div>
+            <div><label className="text-[9px] text-muted-foreground mb-0.5 block">Max concurrent</label><input type="number" value={callConfig.maxConcurrent ?? 5} onChange={(e) => updateField("maxConcurrent", parseInt(e.target.value) || 5)} className="w-20 h-7 text-[10px] px-2 border rounded bg-background" min={1} max={50} /></div>
+          </div>
+
+          {/* Greeting & Voicemail */}
+          <div><label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Greeting message</label><textarea value={callConfig.greeting ?? `Thank you for calling ${orgName}. Please hold while we connect you with a counselor.`} onChange={(e) => updateField("greeting", e.target.value)} className="w-full h-14 text-[10px] px-2 py-1.5 border rounded bg-background resize-none" /></div>
+          <div><label className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Voicemail message</label><textarea value={callConfig.voicemailMessage ?? "We\'re sorry, no one is available right now. Please leave a message after the tone."} onChange={(e) => updateField("voicemailMessage", e.target.value)} className="w-full h-14 text-[10px] px-2 py-1.5 border rounded bg-background resize-none" /></div>
+
+          {/* Webhook URLs */}
+          {webhookUrls && selectedProvider !== "none" && (
+            <div className="p-2 bg-muted/20 rounded border border-border/50">
+              <p className="text-[9px] font-semibold text-muted-foreground mb-1.5">Set these in your {providerConfig?.label} console:</p>
+              <div className="space-y-1">
+                <div className="flex items-start gap-2"><span className="text-[9px] text-muted-foreground w-24 shrink-0">Voice webhook:</span><code className="text-[9px] font-mono text-foreground bg-background px-1.5 py-0.5 rounded border break-all">{webhookUrls.voice}</code></div>
+                <div className="flex items-start gap-2"><span className="text-[9px] text-muted-foreground w-24 shrink-0">Status callback:</span><code className="text-[9px] font-mono text-foreground bg-background px-1.5 py-0.5 rounded border break-all">{webhookUrls.status}</code></div>
+              </div>
+            </div>
+          )}
+
+          {/* Save */}
+          <div className="flex justify-end">
+            <Button size="sm" className="h-7 text-[10px] gap-1.5" onClick={saveConfig} disabled={saving}>
+              {saving ? (<><Clock size={10} className="animate-spin" /> Saving...</>) : saved ? (<><CheckCircle2 size={10} /> Saved!</>) : (<><Settings size={10} /> Save Call Config</>)}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Channel Config Panel ─────────────────────────────────────────────────
+
 function ChannelConfigPanel({ orgId, projectId }: { orgId: string; projectId: string }) {
   const [config, setConfig] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false);
@@ -775,6 +978,9 @@ export default function PlatformAdminPage() {
                         </div>
                       ))}
                     </div>
+
+                    {/* ─── Call Integration Setup (Platform Admin Only) ──── */}
+                    <CallIntegrationPanel orgId={org.orgId} orgName={org.name} />
 
                     {/* ─── Channel Config & Webhook URLs ──────────────── */}
                     <ChannelConfigPanel orgId={org.orgId} projectId={process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "reachthesoul-prod"} />
