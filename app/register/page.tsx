@@ -244,6 +244,9 @@ export default function RegisterPage() {
             Every prayer heard.<br className="hidden lg:block" />
             Every soul cared for.
           </h1>
+          <p className="text-[11px] lg:text-xs text-sidebar-primary font-semibold mb-2">
+            Helping churches and ministries respond 24/7 in a minute — without losing the human touch.
+          </p>
           <p className="text-xs lg:text-sm text-sidebar-foreground/50 leading-relaxed max-w-xs">
             Free to start. No credit card required. Set up your prayer & counseling platform in under 2 minutes.
           </p>

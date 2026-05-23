@@ -90,6 +90,7 @@ const STYLES = `
     .hero .badge { background: rgba(45,212,191,0.15); color: var(--teal); border: 1px solid rgba(45,212,191,0.25); margin-bottom: 28px; }
     .hero h1 { font-family: var(--font-display); font-size: clamp(36px, 5.5vw, 64px); color: var(--white); line-height: 1.15; margin-bottom: 24px; }
     .hero h1 em { font-style: normal; color: var(--teal); }
+    .hero .tagline { font-size: 14px; color: var(--teal); font-weight: 600; letter-spacing: 0.3px; margin-bottom: 12px; }
     .hero p.sub { font-size: 18px; color: rgba(255,255,255,0.6); line-height: 1.7; margin-bottom: 36px; max-width: 560px; }
     .hero-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
     .hero-stats { display: flex; gap: 48px; margin-top: 64px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,0.08); }
@@ -260,6 +261,7 @@ const BODY = `
 <section class="hero">
   <div class="container hero-content">
     <div class="badge">🙏 Prayer & Counseling Platform</div>
+    <p class="tagline">Helping churches and ministries respond 24/7 in a minute — without losing the human touch.</p>
     <h1>Every prayer <em>heard</em>.<br />Every soul <em>cared for</em>.</h1>
     <p class="sub">Someone just messaged your church at 2 AM: <em>"I can't do this anymore."</em> Who responds? ReachTheSoul ensures no message goes unanswered — with AI that provides immediate care and empathy, and seamless escalation to human counselors for prayer, deeper counseling, or urgent visits.</p>
     <div class="hero-buttons">
@@ -563,7 +565,7 @@ const BODY = `
           <div class="logo-icon"><span>RTS</span></div>
           <span class="logo-text">ReachTheSoul</span>
         </div>
-        <p>AI-powered prayer and counseling platform for churches and ministries. Every prayer heard. Every soul cared for.</p>
+        <p>Helping churches and ministries respond 24/7 in a minute — without losing the human touch.</p>
       </div>
       <div class="footer-links">
         <div>

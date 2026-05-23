@@ -129,8 +129,11 @@ export default function LoginPage() {
             Every prayer heard.<br className="hidden lg:block" />
             Every soul cared for.
           </h1>
+          <p className="text-[11px] lg:text-xs text-sidebar-primary font-semibold mb-2">
+            Helping churches and ministries respond 24/7 in a minute — without losing the human touch.
+          </p>
           <p className="text-xs lg:text-sm text-sidebar-foreground/50 leading-relaxed max-w-xs">
-            Built for churches and ministries who provide prayer support, counseling, and pastoral care across digital channels.
+            AI-powered prayer and counseling platform. First response by AI, deeper care by your team.
           </p>
         </div>
 
