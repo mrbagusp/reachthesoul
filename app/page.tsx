@@ -156,7 +156,14 @@ const STYLES = `
 
     /* ── PRICING ── */
     .pricing { padding: 100px 0; background: var(--white); }
-    .pricing-header { text-align: center; max-width: 640px; margin: 0 auto 60px; }
+    .pricing-header { text-align: center; max-width: 640px; margin: 0 auto 20px; }
+    .founding-badge { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #0F1B2D, #1A2942); color: #2DD4BF; font-size: 12px; font-weight: 700; padding: 8px 20px; border-radius: 100px; margin-bottom: 16px; letter-spacing: 0.5px; }
+    .founding-badge svg { width: 14px; height: 14px; fill: currentColor; }
+    .founding-notice { max-width: 580px; margin: 0 auto 48px; background: linear-gradient(135deg, rgba(45,212,191,0.06), rgba(45,212,191,0.02)); border: 1px solid rgba(45,212,191,0.15); border-radius: 12px; padding: 16px 24px; text-align: center; }
+    .founding-notice p { font-size: 13px; color: var(--gray-600); line-height: 1.6; margin: 0; }
+    .founding-notice strong { color: var(--navy); }
+    .founding-notice em { color: var(--teal-dark); font-style: normal; font-weight: 600; }
+    .future-price { font-size: 11px; color: var(--gray-400); text-decoration: line-through; margin-left: 6px; font-family: var(--font-body); font-weight: 400; }
     .pricing-header h2 { font-family: var(--font-display); font-size: clamp(28px, 4vw, 42px); color: var(--navy); line-height: 1.2; margin-bottom: 16px; }
     .pricing-header p { font-size: 16px; color: var(--gray-500); }
     .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; max-width: 960px; margin: 0 auto; }
@@ -410,8 +417,17 @@ const BODY = `
 <section class="pricing" id="pricing">
   <div class="container">
     <div class="pricing-header">
+      <div class="founding-badge">
+        <svg viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+        FOUNDING CHURCH PRICING
+      </div>
       <h2>Simple, transparent pricing</h2>
       <p>Start free. Upgrade when you're ready. No contracts, cancel anytime.</p>
+    </div>
+    <div class="founding-notice">
+      <p>
+        <strong>Early Ministry Partner rates.</strong> Churches that join now <em>keep their pricing permanently</em> as founding partners — even after prices increase for new subscribers.
+      </p>
     </div>
     <div class="pricing-grid">
       <div class="price-card">
@@ -429,7 +445,7 @@ const BODY = `
       </div>
       <div class="price-card">
         <h3>Starter</h3>
-        <div class="amount">$29<span>/mo</span></div>
+        <div class="amount">$29<span>/mo</span><span class="future-price">$49</span></div>
         <div class="desc">WhatsApp + AI. For most churches.</div>
         <ul>
           <li>3 users</li>
@@ -446,7 +462,7 @@ const BODY = `
       </div>
       <div class="price-card popular">
         <h3>Growth</h3>
-        <div class="amount">$97<span>/mo</span></div>
+        <div class="amount">$97<span>/mo</span><span class="future-price">$179</span></div>
         <div class="desc">Omnichannel + advanced AI.</div>
         <ul>
           <li>15 users</li>
@@ -463,7 +479,7 @@ const BODY = `
       </div>
       <div class="price-card">
         <h3>Enterprise</h3>
-        <div class="amount">$249<span>+/mo</span></div>
+        <div class="amount">$249<span>+/mo</span><span class="future-price">$449</span></div>
         <div class="desc">For large organizations.</div>
         <ul>
           <li>Unlimited users</li>
