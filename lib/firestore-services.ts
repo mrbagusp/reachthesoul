@@ -609,3 +609,103 @@ export async function sendMessage(
     updatedAt: serverTimestamp(),
   });
 }
+
+// ---------------------------------------------------------------------------
+// PROGRESS STEPS
+// ---------------------------------------------------------------------------
+export async function addProgressStep(
+  orgId: string,
+  data: { name: string; description: string; color?: string; order?: number },
+  createdBy: string
+) {
+  const [{ collection, addDoc, serverTimestamp, getDocs, query, where }, db] = await Promise.all([
+    import("firebase/firestore"),
+    getDb(),
+  ]);
+  // Auto-calculate order if not provided
+  let order = data.order;
+  if (order === undefined) {
+    const q = query(collection(db, "progress_steps"), where("orgId", "==", orgId));
+    const snap = await getDocs(q);
+    order = snap.size;
+  }
+  return addDoc(collection(db, "progress_steps"), {
+    orgId,
+    name: data.name,
+    description: data.description,
+    color: data.color ?? "",
+    order,
+    isActive: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    createdBy,
+  });
+}
+
+export async function updateProgressStep(
+  id: string,
+  data: { name?: string; description?: string; color?: string; order?: number; isActive?: boolean }
+) {
+  const [{ doc, updateDoc, serverTimestamp }, db] = await Promise.all([
+    import("firebase/firestore"),
+    getDb(),
+  ]);
+  return updateDoc(doc(db, "progress_steps", id), {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteProgressStep(id: string) {
+  const [{ doc, deleteDoc }, db] = await Promise.all([
+    import("firebase/firestore"),
+    getDb(),
+  ]);
+  return deleteDoc(doc(db, "progress_steps", id));
+}
+
+export async function reorderProgressSteps(steps: { id: string; order: number }[]) {
+  const [{ doc, writeBatch, serverTimestamp }, db] = await Promise.all([
+    import("firebase/firestore"),
+    getDb(),
+  ]);
+  const batch = writeBatch(db);
+  for (const step of steps) {
+    batch.update(doc(db, "progress_steps", step.id), { order: step.order, updatedAt: serverTimestamp() });
+  }
+  return batch.commit();
+}
+
+export async function seedDefaultProgressSteps(orgId: string, createdBy: string) {
+  const [{ collection, addDoc, serverTimestamp, getDocs, query, where }, db] = await Promise.all([
+    import("firebase/firestore"),
+    getDb(),
+  ]);
+  // Check if already seeded
+  const q = query(collection(db, "progress_steps"), where("orgId", "==", orgId));
+  const existing = await getDocs(q);
+  if (!existing.empty) return;
+
+  const defaults = [
+    { name: "Data",        description: "Identity recorded",      color: "slate" },
+    { name: "Prayer",      description: "Prayed for",             color: "blue" },
+    { name: "Counseling",  description: "In counseling sessions",  color: "amber" },
+    { name: "Recommitment",description: "Recommitment made",       color: "purple" },
+    { name: "Salvation",   description: "Accepted salvation",      color: "emerald" },
+    { name: "POP",         description: "Part of the Parish",      color: "orange" },
+  ];
+
+  for (let i = 0; i < defaults.length; i++) {
+    await addDoc(collection(db, "progress_steps"), {
+      orgId,
+      name: defaults[i].name,
+      description: defaults[i].description,
+      color: defaults[i].color,
+      order: i,
+      isActive: true,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdBy,
+    });
+  }
+}

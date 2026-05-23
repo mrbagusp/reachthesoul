@@ -16,28 +16,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TicketStatusBadge, TicketPriorityBadge } from "@/components/tickets/TicketStatusBadge";
 import { useRespondent } from "@/hooks/use-firestore-respondents";
 import { useTicketsByRespondent, useMessages } from "@/hooks/use-firestore-tickets";
-import { useLeadSources, useProgramSources } from "@/hooks/use-firestore-config";
+import { useLeadSources, useProgramSources, useProgressSteps } from "@/hooks/use-firestore-config";
 import { updateRespondent } from "@/lib/firestore-services";
 import { useAuthStore } from "@/store/auth-store";
 import { useOrgStore } from "@/store/org-store";
 import { cn } from "@/lib/utils";
 import type { Respondent, RespondentProgress } from "@/types";
-import { DEFAULT_PROGRESS_STEPS } from "@/types";
 
-// Progress step config
-const PROGRESS_CONFIG: Record<string, { color: string; bg: string; border: string; desc: string }> = {
-  Data:         { color: "text-slate-600",   bg: "bg-slate-100",   border: "border-slate-300",  desc: "Identity recorded" },
-  Doa:          { color: "text-blue-600",    bg: "bg-blue-50",     border: "border-blue-200",   desc: "Prayed for" },
-  Prayer:       { color: "text-blue-600",    bg: "bg-blue-50",     border: "border-blue-200",   desc: "Prayed for" },
-  Konseling:    { color: "text-amber-600",   bg: "bg-amber-50",    border: "border-amber-200",  desc: "In counseling" },
-  Counseling:   { color: "text-amber-600",   bg: "bg-amber-50",    border: "border-amber-200",  desc: "In counseling" },
-  Rekomitmen:   { color: "text-purple-600",  bg: "bg-purple-50",   border: "border-purple-200", desc: "Recommitment made" },
-  Recommitment: { color: "text-purple-600",  bg: "bg-purple-50",   border: "border-purple-200", desc: "Recommitment made" },
-  Salvation:    { color: "text-emerald-600", bg: "bg-emerald-50",  border: "border-emerald-200",desc: "Accepted salvation" },
-  POP:          { color: "text-orange-600",  bg: "bg-orange-50",   border: "border-orange-200", desc: "Part of the Parish" },
+// Color mapping for progress steps
+const COLOR_MAP: Record<string, { color: string; bg: string; border: string }> = {
+  slate:   { color: "text-slate-600",   bg: "bg-slate-100",   border: "border-slate-300" },
+  blue:    { color: "text-blue-600",    bg: "bg-blue-50",     border: "border-blue-200" },
+  amber:   { color: "text-amber-600",   bg: "bg-amber-50",    border: "border-amber-200" },
+  purple:  { color: "text-purple-600",  bg: "bg-purple-50",   border: "border-purple-200" },
+  emerald: { color: "text-emerald-600", bg: "bg-emerald-50",  border: "border-emerald-200" },
+  orange:  { color: "text-orange-600",  bg: "bg-orange-50",   border: "border-orange-200" },
+  rose:    { color: "text-rose-600",    bg: "bg-rose-50",     border: "border-rose-200" },
+  cyan:    { color: "text-cyan-600",    bg: "bg-cyan-50",     border: "border-cyan-200" },
+  indigo:  { color: "text-indigo-600",  bg: "bg-indigo-50",   border: "border-indigo-200" },
 };
-
-const PROGRESS_FALLBACK = { color: "text-gray-600", bg: "bg-gray-100", border: "border-gray-300", desc: "" };
+const COLOR_FALLBACK = { color: "text-gray-600", bg: "bg-gray-100", border: "border-gray-300" };
 
 // Normalize progress — can be string (legacy) or object { currentStep, steps, ... } (new seed data)
 function getProgressStep(progress: any): string {
@@ -82,6 +80,19 @@ export default function RespondentProfilePage() {
   const { tickets, loading: ticketsLoading } = useTicketsByRespondent(id);
   const { items: leadSources } = useLeadSources();
   const { items: programSourceItems } = useProgramSources();
+  const { items: progressStepsRaw } = useProgressSteps();
+
+  // Build dynamic progress config from org's progress_steps collection
+  const progressSteps = progressStepsRaw.filter((s: any) => s.isActive);
+  const progressStepNames = progressSteps.map((s: any) => s.name);
+
+  // Build PROGRESS_CONFIG dynamically from org's steps
+  const PROGRESS_CONFIG: Record<string, { color: string; bg: string; border: string; desc: string }> = {};
+  for (const step of progressSteps) {
+    const colors = COLOR_MAP[(step as any).color] ?? COLOR_FALLBACK;
+    PROGRESS_CONFIG[step.name] = { ...colors, desc: (step as any).description ?? "" };
+  }
+  const PROGRESS_FALLBACK = { color: "text-gray-600", bg: "bg-gray-100", border: "border-gray-300", desc: "" };
 
   const [respondent, setRespondent] = useState<Respondent | null>(null);
   const [editing, setEditing]       = useState(false);
@@ -229,7 +240,7 @@ export default function RespondentProfilePage() {
     setEditCategories((prev) => prev.filter((c) => c !== cat));
 
   const currentProgressIdx = getProgressStep(respondent.progress)
-    ? DEFAULT_PROGRESS_STEPS.indexOf(getProgressStep(respondent.progress))
+    ? progressStepNames.indexOf(getProgressStep(respondent.progress))
     : -1;
 
   return (
@@ -379,7 +390,7 @@ export default function RespondentProfilePage() {
                     <Select value={editProgress} onValueChange={(v) => setEditProgress(v as RespondentProgress)}>
                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select progress..." /></SelectTrigger>
                       <SelectContent>
-                        {DEFAULT_PROGRESS_STEPS.map((s) => (
+                        {progressStepNames.map((s) => (
                           <SelectItem key={s} value={s}>
                             <span className={cn("font-medium", (PROGRESS_CONFIG[s] ?? PROGRESS_FALLBACK).color)}>{s}</span>
                             <span className="ml-2 text-muted-foreground text-[10px]">— {(PROGRESS_CONFIG[s] ?? PROGRESS_FALLBACK).desc}</span>
@@ -597,7 +608,7 @@ export default function RespondentProfilePage() {
               </CardHeader>
               <CardContent className="px-4 pb-4">
                 <div className="flex flex-col gap-2">
-                  {DEFAULT_PROGRESS_STEPS.map((step, idx) => {
+                  {progressStepNames.map((step, idx) => {
                     const isActive  = getProgressStep(respondent.progress) === step;
                     const isDone    = currentProgressIdx > idx;
                     const cfg       = (PROGRESS_CONFIG[step] ?? PROGRESS_FALLBACK);

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useOrgStore } from "@/store/org-store";
 import { useAuthStore } from "@/store/auth-store";
 
@@ -138,6 +138,32 @@ export function useProgramSources() {
 
 export function useOutcomes() {
   return useFirestoreCollection("interaction_outcomes", "outcomeId");
+}
+
+export function useProgressSteps() {
+  const result = useFirestoreCollection("progress_steps", "stepId");
+  const activeOrg = useOrgStore((s) => s.activeOrg);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const seeded = useRef(false);
+
+  useEffect(() => {
+    if (result.loading || seeded.current) return;
+    if (!activeOrg?.orgId || !currentUser?.uid) return;
+    if (result.items.length > 0) return;
+
+    // Progress steps empty for this org — seed defaults
+    seeded.current = true;
+    import("@/lib/firestore-services").then(({ seedDefaultProgressSteps }) => {
+      seedDefaultProgressSteps(activeOrg.orgId, currentUser.uid).catch(console.error);
+    });
+  }, [result.loading, result.items.length, activeOrg?.orgId, currentUser?.uid]);
+
+  // Sort by order field
+  const sorted = useMemo(() => {
+    return [...result.items].sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+  }, [result.items]);
+
+  return { ...result, items: sorted };
 }
 
 export function useUsers() {

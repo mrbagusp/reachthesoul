@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Ticket, MessageSquare,
-  BarChart2, Settings, Tag, Globe, CheckCircle2,
+  BarChart2, Settings, Tag, Globe, CheckCircle2, ListOrdered,
   ChevronDown, UserCog, LogOut, Plug, CircleUser, X, CalendarDays, Bot, PhoneCall, CreditCard, Shield, Tv2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -43,6 +43,7 @@ const navItems: NavItem[] = [
       { label: "Lead Sources", href: "/dashboard/admin/lead-sources", icon: Globe },
       { label: "Program Sources", href: "/dashboard/admin/program-sources", icon: Tv2 },
       { label: "Outcomes", href: "/dashboard/admin/outcomes", icon: CheckCircle2 },
+      { label: "Progress Steps", href: "/dashboard/admin/progress-steps", icon: ListOrdered },
       { label: "Integrations", href: "/dashboard/admin/integrations",    icon: Plug },
       { label: "Chat Widget",  href: "/dashboard/admin/widget",          icon: MessageSquare },
       { label: "AI Settings",  href: "/dashboard/admin/ai-settings",    icon: Bot },

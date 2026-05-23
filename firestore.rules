@@ -171,6 +171,15 @@ service cloud.firestore {
       allow delete: if isSignedIn() && (isOrgAdmin(existingOrgId()) || isPlatformAdmin());
     }
 
+    match /progress_steps/{docId} {
+      allow read:  if isSignedIn() && (isOrgMember(existingOrgId()) || isPlatformAdmin());
+      allow create: if isSignedIn() && (
+        isOrgAdmin(incomingOrgId()) || isOrgMember(incomingOrgId()) // seed on first load
+      );
+      allow update: if isSignedIn() && isOrgAdmin(existingOrgId());
+      allow delete: if isSignedIn() && (isOrgAdmin(existingOrgId()) || isPlatformAdmin());
+    }
+
     // ─── Counters (ticket number sequence) ────────────────────────
 
     match /counters/{docId} {

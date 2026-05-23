@@ -168,7 +168,15 @@ export default function RegisterPage() {
         }
       }
 
-      // 7. Seed dummy data (demo respondents + tickets) so dashboard isn't empty
+      // 7. Seed default progress steps
+      try {
+        const { seedDefaultProgressSteps } = await import("@/lib/firestore-services");
+        await seedDefaultProgressSteps(slug, uid);
+      } catch (seedErr) {
+        console.warn("[Register] Progress steps seeding failed (non-critical):", seedErr);
+      }
+
+      // 8. Seed dummy data (demo respondents + tickets) so dashboard isn't empty
       try {
         const { seedDummyData } = await import("@/lib/seed-dummy-data");
         await seedDummyData(db, slug, uid);
