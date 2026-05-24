@@ -177,6 +177,10 @@ const STYLES = `
     .price-card ul { list-style: none; margin-bottom: 24px; }
     .price-card ul li { font-size: 13px; color: var(--gray-600); padding: 5px 0; padding-left: 22px; position: relative; }
     .price-card ul li::before { content: '✓'; position: absolute; left: 0; color: var(--teal-dark); font-weight: 700; }
+    .price-card ul li.feat-escalation { background: linear-gradient(135deg, rgba(45,212,191,0.1), rgba(45,212,191,0.04)); border: 1px solid rgba(45,212,191,0.25); border-radius: 8px; padding: 8px 10px 8px 22px; margin: 6px 0; color: #0F8A74; font-weight: 700; font-size: 12px; line-height: 1.4; }
+    .price-card ul li.feat-escalation::before { content: '⚡'; color: #D97706; }
+    .price-card ul li.feat-locked { color: #aaa; font-style: italic; font-size: 12px; }
+    .price-card ul li.feat-locked::before { content: '🔒'; }
     .price-card .btn { width: 100%; justify-content: center; padding: 12px; font-size: 14px; }
 
     /* ── CTA ── */
@@ -453,8 +457,8 @@ const BODY = `
           <li>300 AI conversations/mo</li>
           <li>500 WhatsApp conversations</li>
           <li>Unlimited incoming messages</li>
-          <li>AI auto-reply + escalation</li>
-          <li>AI trainable to your doctrine</li>
+          <li>AI auto-reply (basic model)</li>
+          <li class="feat-locked">AI crisis escalation to pastoral team (Growth plan)</li>
           <li>Team management</li>
           <li>CSV export</li>
         </ul>
@@ -471,6 +475,7 @@ const BODY = `
           <li>1,000 WhatsApp conversations</li>
           <li>Instagram, Facebook, TikTok DM</li>
           <li>24/7 AI counselor (advanced)</li>
+          <li class="feat-escalation">AI crisis detection & instant WhatsApp escalation to your pastoral team</li>
           <li>Call integration available ($49 setup)</li>
           <li>Advanced analytics</li>
           <li>Priority support</li>
@@ -487,6 +492,7 @@ const BODY = `
           <li>5,000 AI conversations/mo</li>
           <li>3,000 WhatsApp conversations</li>
           <li>All channels + API access</li>
+          <li class="feat-escalation">AI crisis detection & instant WhatsApp escalation to your pastoral team</li>
           <li>AI trained on your doctrine</li>
           <li>Call integration included</li>
           <li>Dedicated account manager</li>
