@@ -27,8 +27,8 @@ export default function PrayerCRMPage() {
       problemBody={`
         <p>We talked to churches of every size — 50 members to 5,000. The pattern was always the same.</p>
         <p>Prayer requests come in through <strong>WhatsApp groups, Instagram DMs, Sunday cards, phone calls, and walk-ins</strong>. They're scattered across five different phones, three notebooks, and someone's memory.</p>
-        <p>A counselor screenshots a request and means to follow up. But by Wednesday, it's buried under 200 new messages. The person who poured their heart out? They never hear back.</p>
-        <p>This isn't a heart problem. Your team cares deeply. <strong>It's a systems problem.</strong> You don't have a prayer CRM — you have prayer chaos.</p>
+        <p>A counselor screenshots a request and means to follow up. But by Wednesday, it’s buried under 200 new messages. The person who poured their heart out? They never hear back.</p>
+        <p>This isn’t a heart problem. Your team cares deeply. <strong>It’s a systems problem.</strong> You don’t have a prayer CRM — you have prayer chaos.</p>
       `}
       problemStats={[
         { stat: "70%+", desc: "Prayer requests in most churches never receive a follow-up response." },
@@ -54,8 +54,8 @@ export default function PrayerCRMPage() {
       whyTitle="Why churches choose ReachTheSoul over spreadsheets"
       whyPoints={[
         { title: "Built for ministry, not sales teams", desc: "Unlike Salesforce or HubSpot, ReachTheSoul speaks the language of pastoral care. Prayer points, not deals. Respondents, not leads. Progress steps, not pipeline stages." },
-        { title: "AI that prays, not just replies", desc: "Our AI doesn't send generic auto-responses. It listens, empathizes, shares Scripture, and knows when to escalate to a human. Trained specifically for pastoral conversation." },
-        { title: "WhatsApp-first (because that's where your people are)", desc: "Most church communication happens on WhatsApp — not email. ReachTheSoul is built around WhatsApp from day one, with Instagram, Facebook, and website chat as bonus channels." },
+        { title: "AI that prays, not just replies", desc: "Our AI doesn’t send generic auto-responses. It listens, empathizes, shares Scripture, and knows when to escalate to a human. Trained specifically for pastoral conversation." },
+        { title: "WhatsApp-first (because that’s where your people are)", desc: "Most church communication happens on WhatsApp — not email. ReachTheSoul is built around WhatsApp from day one, with Instagram, Facebook, and website chat as bonus channels." },
         { title: "Founding Church pricing — locked forever", desc: "Churches that join now keep their pricing permanently as founding partners. Start free, upgrade to $29/mo when ready. Prices will increase for future subscribers." },
       ]}
       ctaTitle="Stop losing prayer requests"

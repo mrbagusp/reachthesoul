@@ -29,7 +29,7 @@ export default function ChurchWhatsAppManagementPage() {
         <p>Prayer requests come into <strong>three different phones</strong>. The senior pastor's personal WhatsApp. The church admin's phone. A shared phone that nobody can find on Sundays.</p>
         <p>There are at least <strong>five WhatsApp groups</strong> — prayer team, pastoral team, admin, volunteers, and that one group nobody remembers creating. Messages cross-post between them. Things get missed. People double-respond. Or worse — nobody responds at all.</p>
         <p>When someone messages the church number at 10 PM, it sits there until whoever has the phone checks it. Maybe tomorrow morning. Maybe never, if the phone is on silent.</p>
-        <p><strong>WhatsApp is the most powerful ministry tool your church has. But without a system, it's also the most chaotic.</strong></p>
+        <p><strong>WhatsApp is the most powerful ministry tool your church has. But without a system, it’s also the most chaotic.</strong></p>
       `}
       problemStats={[
         { stat: "3+", desc: "Number of personal phones managing church WhatsApp messages in most churches." },
@@ -54,9 +54,9 @@ export default function ChurchWhatsAppManagementPage() {
       ]}
       whyTitle="Why churches move their WhatsApp to ReachTheSoul"
       whyPoints={[
-        { title: "No more phone dependency", desc: "When the admin is on vacation, WhatsApp doesn't stop. When the pastor changes phones, nothing is lost. The system runs on the platform, not on personal devices." },
+        { title: "No more phone dependency", desc: "When the admin is on vacation, WhatsApp doesn’t stop. When the pastor changes phones, nothing is lost. The system runs on the platform, not on personal devices." },
         { title: "Unlimited incoming messages", desc: "Every plan includes unlimited incoming WhatsApp messages. Your respondents can message as much as they need. You only pay for outbound initiative conversations." },
-        { title: "Works alongside Instagram & Facebook", desc: "ReachTheSoul isn't just WhatsApp — it's omnichannel. Instagram DMs, Facebook messages, and website chat all flow into the same inbox. One dashboard for all your digital ministry." },
+        { title: "Works alongside Instagram & Facebook", desc: "ReachTheSoul isn’t just WhatsApp — it’s omnichannel. Instagram DMs, Facebook messages, and website chat all flow into the same inbox. One dashboard for all your digital ministry." },
         { title: "We set it up for you", desc: "WhatsApp Business API integration can be tricky. We handle the entire setup for you — within 12 hours of signing up. No technical knowledge required." },
       ]}
       ctaTitle="Take your church WhatsApp from chaos to clarity"

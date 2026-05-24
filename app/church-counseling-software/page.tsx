@@ -16,7 +16,7 @@ export default function ChurchCounselingSoftwarePage() {
   return (
     <SEOLandingPage
       badge="Church Counseling Software"
-      headline="Your counselors can't be available 24/7.<br/><em>But your counseling system can.</em>"
+      headline="Your counselors can’t be available 24/7.<br/><em>But your counseling system can.</em>"
       subheadline="ReachTheSoul gives your pastoral counseling team a platform that responds instantly, tracks every conversation, and never lets a cry for help go unanswered."
       heroStats={[
         { value: "24/7", label: "AI first response" },
@@ -26,7 +26,7 @@ export default function ChurchCounselingSoftwarePage() {
       problemTitle="The counseling gap nobody talks about"
       problemBody={`
         <p>Your church has counselors. Good ones. People who genuinely care, who give their time, who sit with people in their darkest moments.</p>
-        <p>But they can't be everywhere. They can't answer WhatsApp at 2 AM. They can't respond to every Instagram DM within minutes. They can't remember every detail from a counseling session three months ago.</p>
+        <p>But they can’t be everywhere. They can’t answer WhatsApp at 2 AM. They can’t respond to every Instagram DM within minutes. They can’t remember every detail from a counseling session three months ago.</p>
         <p>So what happens? <strong>Someone sends a desperate message on a Tuesday night. Nobody sees it until Thursday.</strong> By then, the moment has passed — and so has the trust.</p>
         <p>Or worse: someone expresses thoughts of self-harm, and it sits in an unread message queue for hours. That's not a counseling failure. That's a <strong>systems failure</strong>.</p>
       `}
@@ -36,7 +36,7 @@ export default function ChurchCounselingSoftwarePage() {
         { stat: "3x", desc: "People are 3x more likely to open up digitally than in person. Your inbox is your counseling room." },
       ]}
       solutionTitle="Counseling software that never sleeps"
-      solutionBody="ReachTheSoul is not replacing your counselors — it's making sure every person gets immediate care while your team prepares to provide deeper support. AI handles the first response. Your team handles the rest."
+      solutionBody="ReachTheSoul is not replacing your counselors — it’s making sure every person gets immediate care while your team prepares to provide deeper support. AI handles the first response. Your team handles the rest."
       features={[
         { icon: "🤖", title: "AI first responder", desc: "When someone reaches out, AI responds within seconds — with empathy, with Scripture, with genuine listening. Not a chatbot. An AI trained for pastoral conversation that knows when to comfort and when to escalate." },
         { icon: "⚡", title: "Crisis detection & escalation", desc: "AI detects signs of self-harm, suicidal ideation, severe distress, or urgent need. Instantly sends a WhatsApp alert to your on-call counselor with full context. No delay. No missed signals." },
@@ -53,9 +53,9 @@ export default function ChurchCounselingSoftwarePage() {
       ]}
       whyTitle="Why churches switch to ReachTheSoul"
       whyPoints={[
-        { title: "AI that understands pastoral context", desc: "Our AI doesn't give generic advice. It's trained on pastoral counseling patterns — knowing when to share Scripture, when to simply listen, and when human intervention is critical." },
-        { title: "Not a replacement — a partner", desc: "ReachTheSoul doesn't replace your counselors. It ensures no message goes unanswered while your team is unavailable, and gives them full context when they're ready to engage." },
-        { title: "Crisis response that saves lives", desc: "When someone types 'I can't do this anymore' at 2 AM, our AI doesn't just reply with nice words. It immediately alerts your pastoral team via WhatsApp. Some churches have told us this feature alone is worth the entire subscription." },
+        { title: "AI that understands pastoral context", desc: "Our AI doesn’t give generic advice. It’s trained on pastoral counseling patterns — knowing when to share Scripture, when to simply listen, and when human intervention is critical." },
+        { title: "Not a replacement — a partner", desc: "ReachTheSoul doesn’t replace your counselors. It ensures no message goes unanswered while your team is unavailable, and gives them full context when they’re ready to engage." },
+        { title: "Crisis response that saves lives", desc: "When someone types 'I can’t do this anymore' at 2 AM, our AI doesn’t just reply with nice words. It immediately alerts your pastoral team via WhatsApp. Some churches have told us this feature alone is worth the entire subscription." },
         { title: "HIPAA-mindful data handling", desc: "Pastoral conversations are sacred. Role-based access, encrypted storage, org-level data isolation. Your congregation's trust is our highest priority." },
       ]}
       ctaTitle="Give your counseling team superpowers"
