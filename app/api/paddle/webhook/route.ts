@@ -270,6 +270,45 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // ─── Subscription paused (user-initiated via profile settings) ──
+      case "subscription.paused": {
+        const pausedAt = sub.paused_at ?? new Date().toISOString();
+        const db = await getFirestoreDb();
+        await db.doc(`organizations/${orgId}`).update({
+          "subscription.status": "paused",
+          "subscription.pausedAt": pausedAt,
+          "subscription.provider": "paddle",
+          "subscription.subscriptionId": sub.id ?? "",
+          updatedAt: new Date(),
+        });
+        // Keep current plan during pause — data retention period
+        console.log(`[Paddle Webhook] Subscription paused for org ${orgId}`);
+        await notifyAdmin(
+          `⏸️ *SUBSCRIPTION PAUSED (Paddle)*\n\nOrg: *${orgId}*\nPlan was: *${plan.toUpperCase()}*\n\n📋 Data retained for 3 months.\nAfter that, all data will be permanently deleted.`
+        );
+        break;
+      }
+
+      // ─── Subscription resumed (auto-resume or manual) ──────────────
+      case "subscription.resumed": {
+        await updateOrgPlan(orgId, plan, {
+          ...sub,
+          status: "active",
+        });
+        const db2 = await getFirestoreDb();
+        await db2.doc(`organizations/${orgId}`).update({
+          "subscription.pausedAt": null,
+          "subscription.resumeAt": null,
+          "subscription.dataDeleteAt": null,
+          "subscription.cancelReason": null,
+        });
+        console.log(`[Paddle Webhook] Subscription resumed for org ${orgId}`);
+        await notifyAdmin(
+          `▶️ *SUBSCRIPTION RESUMED (Paddle)*\n\nOrg: *${orgId}*\nPlan: *${plan.toUpperCase()}*\n\n🎉 Welcome back!`
+        );
+        break;
+      }
+
       default:
         console.log(`[Paddle Webhook] Unhandled event: ${eventType}`);
     }

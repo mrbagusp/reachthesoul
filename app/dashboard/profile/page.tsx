@@ -1,18 +1,22 @@
 "use client";
-import { useState } from "react";
-import { User, Lock, Bell, Shield, Check, Eye, EyeOff } from "lucide-react";
+import { useState, useEffect } from "react";
+import { User, Lock, Bell, Shield, Check, Eye, EyeOff, CreditCard, AlertTriangle, Pause, XCircle, Clock, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/store/auth-store";
+import { useOrgStore } from "@/store/org-store";
+import { getPlanConfig } from "@/lib/plans";
+import type { PlanTier } from "@/types";
 import { cn } from "@/lib/utils";
 
-type Tab = "profile" | "security" | "notifications";
+type Tab = "profile" | "security" | "notifications" | "subscription";
 
 const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "profile",       label: "Profile",       icon: User   },
-  { id: "security",      label: "Security",       icon: Lock   },
-  { id: "notifications", label: "Notifications",  icon: Bell   },
+  { id: "profile",       label: "Profile",       icon: User       },
+  { id: "security",      label: "Security",      icon: Lock       },
+  { id: "notifications", label: "Notifications", icon: Bell       },
+  { id: "subscription",  label: "Subscription",  icon: CreditCard },
 ];
 
 const roleColors: Record<string, string> = {
@@ -20,6 +24,441 @@ const roleColors: Record<string, string> = {
   supervisor: "bg-amber-100  text-amber-700",
   agent:      "bg-blue-100   text-blue-700",
 };
+
+const PLAN_COLORS: Record<string, string> = {
+  free:       "#6B7280",
+  starter:    "#2563EB",
+  growth:     "#7C3AED",
+  enterprise: "#D97706",
+};
+
+// ─── Subscription Settings Tab ──────────────────────────────────────
+
+function SubscriptionTab() {
+  const activeOrg = useOrgStore((s) => s.activeOrg);
+  const currentUser = useAuthStore((s) => s.currentUser);
+  const currentPlan = (activeOrg?.plan ?? "free") as PlanTier;
+  const config = getPlanConfig(currentPlan);
+  const subscription = (activeOrg as any)?.subscription;
+  const isOrgAdmin = currentUser?.role === "admin";
+
+  const [pauseLoading, setPauseLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showPauseConfirm, setShowPauseConfirm] = useState(false);
+  const [actionResult, setActionResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  const subscriptionStatus = subscription?.status ?? (currentPlan === "free" ? "free" : "active");
+  const isPaused = subscriptionStatus === "paused";
+  const isCanceled = subscriptionStatus === "canceled";
+  const isActive = subscriptionStatus === "active";
+  const subscriptionId = subscription?.subscriptionId ?? "";
+  const dataDeleteAt = subscription?.dataDeleteAt;
+
+  // Format date helper
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleDateString("en-US", {
+        year: "numeric", month: "long", day: "numeric",
+      });
+    } catch {
+      return iso;
+    }
+  };
+
+  // Calculate days remaining for data retention
+  const daysRemaining = dataDeleteAt
+    ? Math.max(0, Math.ceil((new Date(dataDeleteAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : null;
+
+  // ─── Pause Subscription ─────────────────────────────────────────
+
+  const handlePause = async () => {
+    if (!subscriptionId || !activeOrg?.orgId) return;
+    setPauseLoading(true);
+    setActionResult(null);
+    try {
+      const res = await fetch("/api/paddle/pause", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orgId: activeOrg.orgId,
+          subscriptionId,
+          userId: currentUser?.uid,
+          userName: currentUser?.displayName,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActionResult({
+          type: "success",
+          message: `Subscription paused. Your data will be retained until ${formatDate(data.resumeAt)}. After that, all data will be permanently removed.`,
+        });
+        setShowPauseConfirm(false);
+        // Reload to reflect changes
+        setTimeout(() => window.location.reload(), 3000);
+      } else {
+        setActionResult({
+          type: "error",
+          message: data.error ?? "Failed to pause subscription. Please try again.",
+        });
+      }
+    } catch (err) {
+      setActionResult({
+        type: "error",
+        message: "Something went wrong. Please contact hello@reachthesoul.org",
+      });
+    }
+    setPauseLoading(false);
+  };
+
+  // ─── Cancel Subscription ────────────────────────────────────────
+
+  const handleCancel = async () => {
+    if (!subscriptionId || !activeOrg?.orgId) return;
+    setCancelLoading(true);
+    setActionResult(null);
+    try {
+      const res = await fetch("/api/paddle/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orgId: activeOrg.orgId,
+          subscriptionId,
+          userId: currentUser?.uid,
+          userName: currentUser?.displayName,
+          reason: cancelReason || "user_requested",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActionResult({
+          type: "success",
+          message: `Subscription canceled. Your current billing period will continue until it ends. Your data will be kept until ${formatDate(data.dataDeleteAt)}, after which it will be permanently deleted.`,
+        });
+        setShowCancelConfirm(false);
+        setCancelReason("");
+        // Reload to reflect changes
+        setTimeout(() => window.location.reload(), 3000);
+      } else {
+        setActionResult({
+          type: "error",
+          message: data.error ?? "Failed to cancel subscription. Please try again.",
+        });
+      }
+    } catch (err) {
+      setActionResult({
+        type: "error",
+        message: "Something went wrong. Please contact hello@reachthesoul.org",
+      });
+    }
+    setCancelLoading(false);
+  };
+
+  // ─── Free plan — no subscription to manage ─────────────────────
+
+  if (currentPlan === "free") {
+    return (
+      <Card className="border border-border shadow-none">
+        <CardHeader className="pb-3 px-5 pt-5">
+          <CardTitle className="text-sm font-semibold">Subscription</CardTitle>
+        </CardHeader>
+        <CardContent className="px-5 pb-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+              style={{ backgroundColor: PLAN_COLORS.free }}
+            >
+              F
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Free Plan</p>
+              <p className="text-xs text-muted-foreground">No active subscription</p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            You are on the free plan. Upgrade from the{" "}
+            <a href="/dashboard/billing" className="text-primary underline font-medium">Billing page</a>{" "}
+            to unlock more features.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // ─── Paid plan — subscription management ────────────────────────
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Current Subscription Info */}
+      <Card className="border border-border shadow-none">
+        <CardHeader className="pb-3 px-5 pt-5">
+          <CardTitle className="text-sm font-semibold">Current Subscription</CardTitle>
+        </CardHeader>
+        <CardContent className="px-5 pb-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-xs font-bold"
+              style={{ backgroundColor: PLAN_COLORS[currentPlan] }}
+            >
+              {config.name.charAt(0)}
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-foreground">{config.name} Plan</p>
+                <span
+                  className={cn(
+                    "text-[10px] font-bold px-2 py-0.5 rounded-full capitalize",
+                    isActive && "bg-emerald-100 text-emerald-700",
+                    isPaused && "bg-amber-100 text-amber-700",
+                    isCanceled && "bg-red-100 text-red-700",
+                  )}
+                >
+                  {subscriptionStatus}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">${config.price}/month</p>
+            </div>
+          </div>
+
+          {/* Subscription details grid */}
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            {subscription?.currentPeriodEnd && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Calendar size={12} />
+                <span>Next billing: {formatDate(subscription.currentPeriodEnd)}</span>
+              </div>
+            )}
+            {subscription?.pausedAt && (
+              <div className="flex items-center gap-2 text-amber-600">
+                <Pause size={12} />
+                <span>Paused since: {formatDate(subscription.pausedAt)}</span>
+              </div>
+            )}
+            {subscription?.resumeAt && (
+              <div className="flex items-center gap-2 text-blue-600">
+                <Clock size={12} />
+                <span>Resumes: {formatDate(subscription.resumeAt)}</span>
+              </div>
+            )}
+            {dataDeleteAt && (
+              <div className="flex items-center gap-2 text-red-600">
+                <AlertTriangle size={12} />
+                <span>Data removal: {formatDate(dataDeleteAt)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Data retention warning */}
+          {(isPaused || isCanceled) && daysRemaining !== null && (
+            <div className={cn(
+              "mt-4 p-3 rounded-lg text-xs",
+              daysRemaining <= 14 ? "bg-red-50 border border-red-200 text-red-700" : "bg-amber-50 border border-amber-200 text-amber-700"
+            )}>
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={14} className="mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold">
+                    {daysRemaining <= 0
+                      ? "Your data is being processed for deletion."
+                      : `${daysRemaining} days remaining before permanent data deletion.`
+                    }
+                  </p>
+                  <p className="mt-1 opacity-80">
+                    {isPaused
+                      ? "Your subscription is paused. All your data (respondents, tickets, messages, reports) will be permanently removed after the retention period ends. Resume your subscription to keep your data."
+                      : "Your subscription has been canceled. All your data will be permanently removed after the retention period. Resubscribe from the Billing page to keep your data."
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Action result message */}
+      {actionResult && (
+        <div className={cn(
+          "p-3 rounded-lg text-xs border",
+          actionResult.type === "success"
+            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+            : "bg-red-50 border-red-200 text-red-700"
+        )}>
+          {actionResult.message}
+        </div>
+      )}
+
+      {/* Subscription Actions — only for org admins */}
+      {isOrgAdmin && isActive && (
+        <Card className="border border-border shadow-none">
+          <CardHeader className="pb-3 px-5 pt-5">
+            <CardTitle className="text-sm font-semibold text-foreground">Manage Subscription</CardTitle>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 flex flex-col gap-4">
+            {/* Pause Subscription */}
+            {!showPauseConfirm ? (
+              <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+                <div>
+                  <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <Pause size={14} className="text-amber-500" />
+                    Pause Subscription
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Pause for up to 3 months. Your data stays safe during the pause period.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                  onClick={() => setShowPauseConfirm(true)}
+                >
+                  Pause
+                </Button>
+              </div>
+            ) : (
+              <div className="p-4 rounded-lg border border-amber-200 bg-amber-50/50">
+                <p className="text-sm font-semibold text-amber-800 flex items-center gap-2 mb-2">
+                  <AlertTriangle size={14} />
+                  Confirm Pause Subscription
+                </p>
+                <div className="text-xs text-amber-700 space-y-1.5 mb-4">
+                  <p>Your subscription will be paused at the end of the current billing period.</p>
+                  <p>During the pause (max 3 months):</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Your data (respondents, tickets, messages) will be safely stored</li>
+                    <li>You and your team will not be able to access the dashboard</li>
+                    <li>No charges will be applied</li>
+                    <li>AI, WhatsApp, and all integrations will be disabled</li>
+                  </ul>
+                  <p className="font-semibold mt-2">
+                    After 3 months, if not resumed, all data will be permanently deleted.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    className="bg-amber-600 hover:bg-amber-700 text-white"
+                    onClick={handlePause}
+                    disabled={pauseLoading}
+                  >
+                    {pauseLoading ? "Pausing..." : "Yes, Pause My Subscription"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPauseConfirm(false)}
+                    disabled={pauseLoading}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Cancel Subscription */}
+            {!showCancelConfirm ? (
+              <div className="flex items-center justify-between p-3 rounded-lg border border-red-200/50">
+                <div>
+                  <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <XCircle size={14} className="text-red-500" />
+                    Cancel Subscription
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Cancel your plan. Data is kept for 3 months, then permanently removed.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 border-red-200 hover:bg-red-50"
+                  onClick={() => setShowCancelConfirm(true)}
+                >
+                  Cancel Plan
+                </Button>
+              </div>
+            ) : (
+              <div className="p-4 rounded-lg border border-red-200 bg-red-50/50">
+                <p className="text-sm font-semibold text-red-800 flex items-center gap-2 mb-2">
+                  <AlertTriangle size={14} />
+                  Confirm Cancel Subscription
+                </p>
+                <div className="text-xs text-red-700 space-y-1.5 mb-3">
+                  <p>Are you sure you want to cancel? Here is what happens:</p>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Your current billing period will continue until it ends</li>
+                    <li>After that, your plan will revert to Free</li>
+                    <li>Your data will be retained for 3 months</li>
+                    <li className="font-semibold">After 3 months, ALL data will be permanently deleted: respondents, tickets, messages, reports, and configurations</li>
+                  </ul>
+                </div>
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <label className="text-[10px] font-medium text-red-700 uppercase tracking-wide block mb-1">
+                      Reason for canceling (optional)
+                    </label>
+                    <select
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      className="w-full h-8 rounded-md border border-red-200 bg-white px-2 text-xs text-red-800"
+                    >
+                      <option value="">Select a reason...</option>
+                      <option value="too_expensive">Too expensive</option>
+                      <option value="not_using">Not using the platform enough</option>
+                      <option value="switching_provider">Switching to another provider</option>
+                      <option value="ministry_closed">Ministry/organization closing</option>
+                      <option value="missing_features">Missing features I need</option>
+                      <option value="temporary_break">Just need a temporary break</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  {cancelReason === "temporary_break" && (
+                    <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
+                      💡 If you just need a break, consider <strong>Pausing</strong> instead! Pausing keeps everything exactly as-is for up to 3 months with no charges.
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                      onClick={handleCancel}
+                      disabled={cancelLoading}
+                    >
+                      {cancelLoading ? "Canceling..." : "Yes, Cancel My Subscription"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => { setShowCancelConfirm(false); setCancelReason(""); }}
+                      disabled={cancelLoading}
+                    >
+                      Keep Subscription
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Non-admin notice */}
+      {!isOrgAdmin && isActive && (
+        <Card className="border border-border shadow-none">
+          <CardContent className="p-5">
+            <p className="text-xs text-muted-foreground">
+              Only organization admins can manage the subscription. Contact your admin to make changes.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Profile Page ──────────────────────────────────────────────
 
 export default function ProfilePage() {
   const { currentUser } = useAuthStore();
@@ -101,7 +540,7 @@ export default function ProfilePage() {
       </Card>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-border">
+      <div className="flex gap-1 border-b border-border overflow-x-auto">
         {tabs.map((t) => {
           const Icon = t.icon;
           return (
@@ -109,7 +548,7 @@ export default function ProfilePage() {
               key={t.id}
               onClick={() => setTab(t.id)}
               className={cn(
-                "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px",
+                "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px whitespace-nowrap",
                 tab === t.id
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -262,6 +701,9 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Tab: Subscription */}
+      {tab === "subscription" && <SubscriptionTab />}
     </div>
   );
 }

@@ -12,6 +12,8 @@ import {
   PhoneCall, Settings, CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PLAN_CONFIGS } from "@/lib/plans";
+import type { PlanTier } from "@/types";
 
 interface OrgData {
   orgId: string;
@@ -764,16 +766,44 @@ export default function PlatformAdminPage() {
                           <select
                             value={org.plan}
                             onChange={async (e) => {
-                              const newPlan = e.target.value;
+                              const newPlan = e.target.value as PlanTier;
+                              const oldPlan = org.plan;
+                              if (newPlan === oldPlan) return;
+                              const confirmed = confirm(
+                                `Change ${org.name} from ${oldPlan.toUpperCase()} → ${newPlan.toUpperCase()}?\n\nThis will immediately update their limits, features, and channel access.`
+                              );
+                              if (!confirmed) { e.target.value = oldPlan; return; }
                               try {
-                                const [{ doc, updateDoc, serverTimestamp }, { db }] = await Promise.all([
+                                const [{ doc, updateDoc, serverTimestamp, collection, addDoc }, { db }] = await Promise.all([
                                   import("firebase/firestore"), import("@/lib/firebase"),
                                 ]);
+                                // Get new plan config for auto-sync
+                                const config = PLAN_CONFIGS[newPlan];
                                 await updateDoc(doc(db, "organizations", org.orgId), {
                                   plan: newPlan,
+                                  limits: {
+                                    maxUsers: config.maxUsers,
+                                    maxRespondents: config.maxRespondents,
+                                    maxAIConversations: config.maxAIConversations,
+                                    maxWhatsAppConversations: config.maxWhatsAppInitiative,
+                                    channels: config.channels,
+                                  },
                                   updatedAt: serverTimestamp(),
                                 });
+                                // Write audit log
+                                await addDoc(collection(db, "plan_change_logs"), {
+                                  orgId: org.orgId,
+                                  orgName: org.name,
+                                  oldPlan,
+                                  newPlan,
+                                  changedBy: currentUser?.uid ?? "unknown",
+                                  changedByName: currentUser?.displayName ?? "Platform Admin",
+                                  changedByEmail: currentUser?.email ?? "",
+                                  reason: "manual_admin_change",
+                                  createdAt: serverTimestamp(),
+                                });
                                 setOrgs((prev) => prev.map((o) => o.orgId === org.orgId ? { ...o, plan: newPlan } : o));
+                                alert(`✅ ${org.name} upgraded to ${newPlan.toUpperCase()}\n\nLimits & features auto-synced.`);
                               } catch (err) {
                                 console.error("Failed to update plan:", err);
                                 alert("Failed to update plan. Please try again.");

@@ -220,6 +220,24 @@ service cloud.firestore {
     }
 
     // ─── Catch-all: deny everything else ──────────────────────────
+
+    // ─── Plan Change Audit Logs ───────────────────────────────────
+    match /plan_change_logs/{docId} {
+      allow read: if isSignedIn() && isPlatformAdmin();
+      allow create: if isSignedIn() && isPlatformAdmin();
+      allow update, delete: if false; // Audit logs are immutable
+    }
+
+    // ─── Subscription Cancellation / Pause Logs ───────────────────
+    match /subscription_actions/{docId} {
+      allow read: if isSignedIn() && (
+        isOrgMember(existingOrgId()) || isPlatformAdmin()
+      );
+      allow create: if isSignedIn() && isOrgMember(incomingOrgId());
+      allow update: if isSignedIn() && isPlatformAdmin();
+      allow delete: if false; // Immutable
+    }
+
     // Any collection not explicitly matched is blocked.
   }
 }

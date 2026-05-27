@@ -3,7 +3,11 @@ import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { setGlobalOptions, logger } from "firebase-functions/v2";
 import { processIncomingMessage } from "./webhook-processor";
 import { downloadAndUploadMedia, categorizeMimeType } from "./media-helper";
+import { cleanupExpiredOrgData } from "./data-cleanup";
 import * as admin from "firebase-admin";
+
+// Re-export scheduled function so Firebase deploys it
+export { cleanupExpiredOrgData };
 
 // Set region to asia-southeast1 (Singapore) — closest to Indonesia
 setGlobalOptions({ region: "asia-southeast1" });
