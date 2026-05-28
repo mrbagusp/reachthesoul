@@ -86,6 +86,8 @@ export interface EscalationTrigger {
   label: string;
   detectedKeywords: string[];
   confidence: number; // 0-1
+  method?: "keyword" | "ai_contextual"; // how the escalation was detected
+  aiAnalysis?: string; // AI reasoning when method is ai_contextual
 }
 
 export interface AIConfig {
@@ -99,6 +101,7 @@ export interface AIConfig {
     enabled: boolean;
   }[];
   channelToggles: Record<string, boolean>;
+  aiContextualDetection?: boolean; // use LLM to analyze context beyond keywords
 }
 
 export type OnlineStatus = "online" | "busy" | "away" | "offline";

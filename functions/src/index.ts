@@ -617,6 +617,8 @@ export const onRespondentMessage = onDocumentCreated(
       const messageContent = (message.content ?? "").toLowerCase();
       const triggers = aiConfig.escalationTriggers ?? [];
       let detectedTrigger: string | null = null;
+      let escalationMethod: "keyword" | "ai_contextual" = "keyword";
+      let aiAnalysis: string | null = null;
 
       for (const trigger of triggers) {
         if (!trigger.enabled) continue;
@@ -630,21 +632,149 @@ export const onRespondentMessage = onDocumentCreated(
         if (detectedTrigger) break;
       }
 
+      // ── AI Contextual Detection (when keywords miss) ──
+      // Uses LLM to analyze message context for crisis signals that keywords can't catch
+      const provider = aiConfig.provider ?? "openai";
+      const apiKey = aiConfig.apiKey ?? "";
+      const model = aiConfig.model ?? "gpt-4o-mini";
+      const systemPrompt = aiConfig.systemPrompt ?? "You are a helpful assistant.";
+
+      if (!detectedTrigger && aiConfig.aiContextualDetection && apiKey) {
+        try {
+          logger.info(`[onRespondentMessage] Running AI contextual crisis detection for ticket ${ticketId}`);
+
+          // Fetch recent messages for conversation context
+          const contextSnap = await db.collection(`tickets/${ticketId}/messages`)
+            .orderBy("createdAt", "desc")
+            .limit(6)
+            .get();
+          const contextMessages = contextSnap.docs
+            .reverse()
+            .filter((d) => !d.data().isInternal)
+            .map((d) => {
+              const m = d.data();
+              return `[${m.senderRole}]: ${m.content ?? ""}`;
+            })
+            .join("\n");
+
+          const crisisPrompt = `You are a crisis detection system for a Christian ministry counseling platform.
+Analyze the respondent's latest message AND the conversation context to determine if this person needs IMMEDIATE human intervention.
+
+Detect these situations even when NO explicit keywords are used:
+- Suicidal ideation or self-harm intent (direct or indirect)
+- Severe emotional crisis (hopelessness, despair, giving up)
+- Domestic violence or abuse indicators
+- Substance abuse emergency
+- Immediate danger to self or others
+- Grief crisis (sudden loss, death of loved one)
+- Psychotic symptoms or severe mental health episode
+
+Be sensitive to both Indonesian (Bahasa) and English expressions. Indonesian speakers may use indirect language like:
+- "sudah tidak kuat lagi" (can't take it anymore)
+- "lebih baik saya pergi" (better if I leave/go)
+- "tidak ada gunanya" (there's no point)
+- "semua akan lebih baik tanpa saya" (everything would be better without me)
+- "saya sudah menyerah" (I've given up)
+- "capek hidup" (tired of living)
+- "mau tidur selamanya" (want to sleep forever)
+- "tidak ada yang peduli" (nobody cares)
+
+Respond with ONLY valid JSON (no markdown, no backticks):
+{"needsEscalation":true/false,"reason":"grief_or_crisis"|"counseling"|null,"confidence":0.0-1.0,"label":"short description","analysis":"brief explanation (1-2 sentences)"}
+
+If the message is casual, informational, or does not indicate crisis, return:
+{"needsEscalation":false,"reason":null,"confidence":0,"label":null,"analysis":null}`;
+
+          const userPrompt = `Conversation context:\n${contextMessages}\n\nLatest message from respondent:\n"${message.content ?? ""}"`;
+
+          let aiDetectionResult = "";
+
+          if (provider === "openai") {
+            const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model,
+                messages: [
+                  { role: "system", content: crisisPrompt },
+                  { role: "user", content: userPrompt },
+                ],
+                max_tokens: 200,
+                temperature: 0.1,
+              }),
+            });
+            const result: any = await resp.json();
+            aiDetectionResult = result.choices?.[0]?.message?.content ?? "";
+          } else if (provider === "anthropic") {
+            const resp = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST",
+              headers: {
+                "x-api-key": apiKey,
+                "anthropic-version": "2023-06-01",
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model,
+                max_tokens: 200,
+                temperature: 0.1,
+                system: crisisPrompt,
+                messages: [{ role: "user", content: userPrompt }],
+              }),
+            });
+            const result: any = await resp.json();
+            aiDetectionResult = result.content?.[0]?.text ?? "";
+          }
+
+          if (aiDetectionResult) {
+            // Strip markdown code fences if present
+            const cleaned = aiDetectionResult.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+            const parsed = JSON.parse(cleaned);
+            if (parsed.needsEscalation && parsed.confidence >= 0.7) {
+              detectedTrigger = parsed.reason ?? "grief_or_crisis";
+              escalationMethod = "ai_contextual";
+              aiAnalysis = parsed.analysis ?? "AI detected crisis signals in conversation context";
+              logger.info(`[onRespondentMessage] AI contextual detection triggered: ${detectedTrigger} (confidence: ${parsed.confidence}) — ${aiAnalysis}`);
+            } else {
+              logger.info(`[onRespondentMessage] AI contextual detection: no crisis detected (confidence: ${parsed.confidence ?? 0})`);
+            }
+          }
+        } catch (aiDetectErr) {
+          logger.error("[onRespondentMessage] AI contextual detection error:", aiDetectErr);
+          // Non-fatal: fall through to normal AI reply
+        }
+      }
+
       if (detectedTrigger) {
-        logger.info(`[onRespondentMessage] Escalation detected: ${detectedTrigger}`);
+        logger.info(`[onRespondentMessage] Escalation detected (${escalationMethod}): ${detectedTrigger}`);
+
+        // Build escalation metadata
+        const escalationData: Record<string, any> = {
+          reason: detectedTrigger,
+          method: escalationMethod,
+        };
+        if (escalationMethod === "ai_contextual" && aiAnalysis) {
+          escalationData.aiAnalysis = aiAnalysis;
+        }
+
         // Mark ticket as escalated
         await db.doc(`tickets/${ticketId}`).update({
           handledBy: "escalated",
-          escalation: detectedTrigger,
+          escalation: escalationData,
           priority: "high",
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
         // Add internal system message
+        const systemNote = escalationMethod === "ai_contextual"
+          ? `⚠️ Escalated to human agent (AI contextual detection: ${detectedTrigger})\n💡 AI Analysis: ${aiAnalysis}`
+          : `⚠️ Escalated to human agent (keyword trigger: ${detectedTrigger})`;
         await db.collection(`tickets/${ticketId}/messages`).add({
           senderId: "system",
           senderName: "System",
           senderRole: "system",
-          content: `⚠️ Escalated to human agent (trigger: ${detectedTrigger})`,
+          content: systemNote,
           isInternal: true,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
@@ -680,10 +810,13 @@ export const onRespondentMessage = onDocumentCreated(
           const ticketNumber = ticket.ticketNumber ?? ticketId;
 
           if (fonnteToken && emergencyContacts.length > 0) {
+            const methodLabel = escalationMethod === "ai_contextual" ? "AI Contextual Detection" : "Keyword Match";
             const alertMessage = `🚨 *URGENT ESCALATION*\n\n` +
               `Respondent: *${respondentName}*\n` +
               `Ticket: *${ticketNumber}*\n` +
               `Trigger: *${detectedTrigger}*\n` +
+              `Detection: *${methodLabel}*\n` +
+              (aiAnalysis ? `AI Analysis: _${aiAnalysis}_\n` : "") +
               `Message: "${messageContent.substring(0, 200)}"\n\n` +
               `⚡ Please check the dashboard immediately and take action.\n` +
               `🔗 https://reachthesoul.org/dashboard/tickets/${ticketId}`;
@@ -716,10 +849,6 @@ export const onRespondentMessage = onDocumentCreated(
       }
 
       // ── Call AI API ──
-      const provider = aiConfig.provider ?? "openai";
-      const apiKey = aiConfig.apiKey ?? "";
-      const model = aiConfig.model ?? "gpt-4o-mini";
-      const systemPrompt = aiConfig.systemPrompt ?? "You are a helpful assistant.";
 
       if (!apiKey) {
         logger.warn("[onRespondentMessage] No API key configured");

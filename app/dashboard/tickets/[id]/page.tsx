@@ -558,7 +558,16 @@ export default function TicketDetailPage() {
                   Human Attention Required — {escalation.label}
                 </p>
                 <p className="text-xs font-normal opacity-80 leading-relaxed">
-                  AI detected keywords: <strong>{escalation.detectedKeywords.map((k) => `"${k}"`).join(", ")}</strong>. Confidence: {Math.round(escalation.confidence * 100)}%.
+                  {escalation.method === "ai_contextual" ? (
+                    <>
+                      AI Contextual Detection — Confidence: {Math.round(escalation.confidence * 100)}%.
+                      {escalation.aiAnalysis && <> Analysis: <em>{escalation.aiAnalysis}</em></>}
+                    </>
+                  ) : (
+                    <>
+                      AI detected keywords: <strong>{escalation.detectedKeywords.map((k) => `"${k}"`).join(", ")}</strong>. Confidence: {Math.round(escalation.confidence * 100)}%.
+                    </>
+                  )}
                   {handledBy === "escalated" && " This ticket has been flagged and is waiting for a human agent."}
                 </p>
               </div>

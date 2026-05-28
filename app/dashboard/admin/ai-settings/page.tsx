@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import {
   Bot, Save, RotateCcw, Plus, Trash2, Shield, Zap, Key, Eye, EyeOff,
   HandHeart, HeartHandshake, Droplets, AlertTriangle, UserCog, Sparkles,
-  ChevronDown, ChevronUp, TestTube2, CheckCircle, XCircle, Loader2,
+  ChevronDown, ChevronUp, TestTube2, CheckCircle, XCircle, Loader2, Brain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +32,7 @@ interface AISettings {
   }[];
   escalationReplyMessage: string;
   channelToggles: Record<string, boolean>;
+  aiContextualDetection: boolean;
 }
 
 const DEFAULT_SYSTEM_PROMPT = `You are a compassionate Christian ministry counselor for ReachTheSoul ministry platform.
@@ -63,6 +64,7 @@ const DEFAULT_SETTINGS: AISettings = {
     { reason: "manual_escalation", label: "Manual Escalation", keywords: ["talk to human", "talk to human", "agent", "counselor", "counselor"], enabled: true },
   ],
   escalationReplyMessage: "Thank you for reaching out. I'm connecting you with a team member who can assist you personally. They'll be with you shortly! 🙏",
+  aiContextualDetection: false,
   channelToggles: {
     WhatsApp: true,
     Instagram: true,
@@ -111,6 +113,12 @@ function AISettingsContent() {
   const [testResult, setTestResult] = useState<string | null>(null);
   const [testLoading, setTestLoading] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
+  const [testEscalation, setTestEscalation] = useState<{
+    method: "keyword" | "ai_contextual" | null;
+    trigger: string | null;
+    analysis: string | null;
+    confidence: number | null;
+  } | null>(null);
 
   // Load settings from organization document
   useEffect(() => {
@@ -181,7 +189,80 @@ function AISettingsContent() {
     setTestLoading(true);
     setTestResult(null);
     setTestError(null);
+    setTestEscalation(null);
     try {
+      // Step 1: Check keyword-based escalation
+      const lower = testInput.toLowerCase();
+      let keywordTrigger: string | null = null;
+      for (const trigger of settings.escalationTriggers) {
+        if (!trigger.enabled) continue;
+        for (const kw of trigger.keywords) {
+          if (lower.includes(kw.toLowerCase())) {
+            keywordTrigger = trigger.label;
+            break;
+          }
+        }
+        if (keywordTrigger) break;
+      }
+
+      if (keywordTrigger) {
+        setTestEscalation({ method: "keyword", trigger: keywordTrigger, analysis: null, confidence: null });
+      }
+
+      // Step 2: If no keyword match and AI contextual detection is on, check with AI
+      if (!keywordTrigger && settings.aiContextualDetection && settings.apiKey) {
+        const crisisPrompt = `You are a crisis detection system for a Christian ministry counseling platform.
+Analyze the respondent's message to determine if this person needs IMMEDIATE human intervention.
+
+Detect these situations even when NO explicit keywords are used:
+- Suicidal ideation or self-harm intent (direct or indirect)
+- Severe emotional crisis (hopelessness, despair, giving up)
+- Domestic violence or abuse indicators
+- Immediate danger to self or others
+- Grief crisis (sudden loss, death of loved one)
+
+Be sensitive to both Indonesian (Bahasa) and English indirect expressions like:
+- "sudah tidak kuat lagi", "lebih baik saya pergi", "tidak ada gunanya"
+- "semua akan lebih baik tanpa saya", "capek hidup", "mau tidur selamanya"
+
+Respond with ONLY valid JSON (no markdown):
+{"needsEscalation":true/false,"reason":"grief_or_crisis"|"counseling"|null,"confidence":0.0-1.0,"label":"short description","analysis":"brief explanation"}`;
+
+        const crisisResp = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orgId,
+            apiKey: settings.apiKey,
+            provider: settings.provider,
+            model: settings.model,
+            messages: [
+              { role: "system", content: crisisPrompt },
+              { role: "user", content: `Latest message from respondent:\n"${testInput}"` },
+            ],
+          }),
+        });
+        if (crisisResp.ok) {
+          const crisisData = await crisisResp.json();
+          const raw = crisisData.choices?.[0]?.message?.content ?? "";
+          try {
+            const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+            const parsed = JSON.parse(cleaned);
+            if (parsed.needsEscalation && parsed.confidence >= 0.7) {
+              setTestEscalation({
+                method: "ai_contextual",
+                trigger: parsed.label ?? "AI-detected crisis",
+                analysis: parsed.analysis ?? null,
+                confidence: parsed.confidence,
+              });
+            } else {
+              setTestEscalation({ method: null, trigger: null, analysis: null, confidence: parsed.confidence ?? 0 });
+            }
+          } catch { /* JSON parse failed, ignore */ }
+        }
+      }
+
+      // Step 3: Get AI reply
       const response = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -371,7 +452,7 @@ function AISettingsContent() {
       </Card>
 
       {/* Master toggles */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           {
             label: "AI Enabled", desc: "Master toggle for all AI features",
@@ -389,6 +470,12 @@ function AISettingsContent() {
             label: "Escalation Detection", desc: "Detect and flag sensitive messages",
             value: settings.escalationTriggers.some((t) => t.enabled),
             onToggle: () => {}, color: "orange", readOnly: true,
+          },
+          {
+            label: "AI Crisis Detection", desc: "Use LLM to detect crisis beyond keywords",
+            value: settings.aiContextualDetection && settings.enabled,
+            onToggle: () => setSettings((s) => ({ ...s, aiContextualDetection: !s.aiContextualDetection })),
+            color: "red", disabled: !settings.enabled || !settings.apiKey,
           },
         ].map((item) => (
           <Card key={item.label} className="border border-border shadow-none">
@@ -548,6 +635,35 @@ function AISettingsContent() {
             </CardContent>
           </Card>
 
+          {/* AI Contextual Detection Info */}
+          {settings.aiContextualDetection && (
+            <Card className="border border-purple-200 shadow-none">
+              <CardHeader className="py-3 px-4 border-b border-purple-100 bg-purple-50/50">
+                <CardTitle className="text-xs font-semibold text-purple-800 flex items-center gap-2">
+                  <Brain size={12} />AI Contextual Crisis Detection
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 flex flex-col gap-2">
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  When enabled, if no keyword match is found, the AI will analyze the full message and conversation context to detect crisis signals that keywords might miss.
+                </p>
+                <div className="text-[10px] text-muted-foreground space-y-1">
+                  <p className="font-semibold text-purple-800">Examples it can catch:</p>
+                  <ul className="list-disc list-inside space-y-0.5 text-purple-700">
+                    <li>&quot;Saya sudah tidak kuat lagi, lebih baik saya pergi saja&quot;</li>
+                    <li>&quot;I just feel like there is no point in going on anymore&quot;</li>
+                    <li>&quot;Capek hidup, mau tidur selamanya&quot;</li>
+                    <li>&quot;Semua akan lebih baik tanpa saya&quot;</li>
+                  </ul>
+                </div>
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-amber-50 border border-amber-200 mt-1">
+                  <AlertTriangle size={10} className="text-amber-600 flex-shrink-0" />
+                  <p className="text-[10px] text-amber-700">Uses 1 extra AI call per message when keywords don&apos;t match. Minimal cost impact with high safety value.</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Escalation Reply Message */}
           <Card className="border border-border shadow-none">
             <CardHeader className="py-3 px-4 border-b border-border">
@@ -653,6 +769,46 @@ function AISettingsContent() {
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
                   <XCircle size={14} className="text-red-600 flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-red-700">{testError}</p>
+                </div>
+              )}
+
+              {/* Escalation Detection Result */}
+              {testEscalation && (
+                <div className={cn(
+                  "p-3 rounded-lg border",
+                  testEscalation.trigger
+                    ? "bg-red-50 border-red-300"
+                    : "bg-emerald-50 border-emerald-200"
+                )}>
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    {testEscalation.trigger ? (
+                      <>
+                        <AlertTriangle size={12} className="text-red-600" />
+                        <span className="text-[10px] font-semibold text-red-700">
+                          ESCALATION DETECTED — {testEscalation.method === "ai_contextual" ? "AI Contextual" : "Keyword Match"}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle size={12} className="text-emerald-600" />
+                        <span className="text-[10px] font-semibold text-emerald-700">
+                          No escalation detected
+                          {testEscalation.confidence != null && ` (confidence: ${Math.round(testEscalation.confidence * 100)}%)`}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {testEscalation.trigger && (
+                    <div className="flex flex-col gap-1">
+                      <p className="text-xs text-red-800 font-medium">Trigger: {testEscalation.trigger}</p>
+                      {testEscalation.confidence != null && (
+                        <p className="text-[10px] text-red-700">Confidence: {Math.round(testEscalation.confidence * 100)}%</p>
+                      )}
+                      {testEscalation.analysis && (
+                        <p className="text-[10px] text-red-700 italic">AI Analysis: {testEscalation.analysis}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
