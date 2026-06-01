@@ -65,7 +65,7 @@ export default function OverviewPage() {
           </Button>
         </div>
       </div>
-
+<OnboardingQuiz />
       {/* Post-upgrade welcome banner */}
       <UpgradeWelcome />
 

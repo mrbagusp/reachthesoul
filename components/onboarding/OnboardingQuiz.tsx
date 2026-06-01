@@ -14,15 +14,20 @@ import type { Lang } from './translations'
 import QuizStep from './QuizStep'
 import OnboardingResult from './OnboardingResult'
 
+console.log('[OnboardingQuiz] FILE LOADED')
+
 const TOTAL_STEPS = 6
 
 export default function OnboardingQuiz() {
+  console.log('[OnboardingQuiz] COMPONENT RENDERING')
+
   const router = useRouter()
   const [lang] = useState<Lang>(detectLanguage)
 
-  // Auth — use existing RTS auth store
+  // Auth
   const currentUser = useAuthStore((s) => s.currentUser)
   const userId = currentUser?.uid
+  console.log('[OnboardingQuiz] currentUser:', currentUser?.email, 'userId:', userId)
 
   const {
     step, isOpen, isLoading,
@@ -34,23 +39,26 @@ export default function OnboardingQuiz() {
 
   // Check if onboarding should show
   useEffect(() => {
-    console.log('[OnboardingQuiz] userId:', userId)
-    if (!userId) return
+    console.log('[OnboardingQuiz] useEffect fired, userId:', userId)
+    if (!userId) {
+      console.log('[OnboardingQuiz] No userId, skipping')
+      return
+    }
     shouldShowOnboarding(userId).then((show) => {
-      console.log('[OnboardingQuiz] shouldShow:', show)
-      if (show) {
-    shouldShowOnboarding(userId).then((show) => {
+      console.log('[OnboardingQuiz] shouldShow result:', show)
       if (show) {
         setIsOpen(true)
         setStep(0)
       }
+    }).catch((err) => {
+      console.error('[OnboardingQuiz] Error checking onboarding:', err)
     })
   }, [userId, setIsOpen, setStep])
 
   // Current step can proceed?
   const canProceed = useMemo(() => {
     switch (step) {
-      case 0: return true // welcome
+      case 0: return true
       case 1: return orgType !== null
       case 2: return monthlyVolume !== null
       case 3: return channels.length > 0
@@ -69,7 +77,7 @@ export default function OnboardingQuiz() {
     })
   }, [orgType, monthlyVolume, channels, painPoint, teamSize, urgency])
 
-  // Handle "See Result" / proceed to result
+  // Handle "See Result"
   const handleSeeResult = async () => {
     if (!userId || !recommendation || !orgType || !monthlyVolume || !painPoint || !teamSize || !urgency) return
 
@@ -77,29 +85,23 @@ export default function OnboardingQuiz() {
     try {
       const data: OnboardingResponse = { orgType, monthlyVolume, channels, painPoint, teamSize, urgency }
       await saveOnboardingResponse(userId, data, recommendation, lang)
-      setStep(7) // show result
+      setStep(7)
     } catch (err) {
       console.error('Failed to save onboarding:', err)
-      setStep(7) // show result anyway
+      setStep(7)
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Result actions
-  const handleExplore = () => {
-    setIsOpen(false)
-  }
-
-  const handleUpgrade = () => {
-    setIsOpen(false)
-    router.push('/dashboard/billing')
-  }
-
+  const handleExplore = () => setIsOpen(false)
+  const handleUpgrade = () => { setIsOpen(false); router.push('/dashboard/billing') }
   const handleContact = () => {
     window.open('https://wa.me/6285974773341?text=Hi%2C%20saya%20baru%20mendaftar%20di%20ReachTheSoul%20dan%20ingin%20tahu%20lebih%20lanjut', '_blank')
     setIsOpen(false)
   }
+
+  console.log('[OnboardingQuiz] isOpen:', isOpen, 'step:', step)
 
   if (!isOpen) return null
 
@@ -113,7 +115,6 @@ export default function OnboardingQuiz() {
       >
         <DialogTitle className="sr-only">Onboarding Quiz</DialogTitle>
 
-        {/* Progress Bar (only during questions) */}
         {step >= 1 && step <= 6 && (
           <div className="w-full h-1.5 bg-gray-100">
             <div
@@ -125,7 +126,6 @@ export default function OnboardingQuiz() {
 
         <div className="p-6">
 
-          {/* ─── WELCOME SCREEN (step 0) ─── */}
           {step === 0 && (
             <div className="text-center space-y-5 py-4">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-2xl">
@@ -141,7 +141,6 @@ export default function OnboardingQuiz() {
             </div>
           )}
 
-          {/* ─── QUESTION 1: Org Type ─── */}
           {step === 1 && (
             <QuizStep
               question={tr('q1', lang)}
@@ -156,7 +155,6 @@ export default function OnboardingQuiz() {
             />
           )}
 
-          {/* ─── QUESTION 2: Volume ─── */}
           {step === 2 && (
             <QuizStep
               question={tr('q2', lang)}
@@ -171,7 +169,6 @@ export default function OnboardingQuiz() {
             />
           )}
 
-          {/* ─── QUESTION 3: Channels (multi-select) ─── */}
           {step === 3 && (
             <QuizStep
               question={tr('q3', lang)}
@@ -190,7 +187,6 @@ export default function OnboardingQuiz() {
             />
           )}
 
-          {/* ─── QUESTION 4: Pain Point ─── */}
           {step === 4 && (
             <QuizStep
               question={tr('q4', lang)}
@@ -206,7 +202,6 @@ export default function OnboardingQuiz() {
             />
           )}
 
-          {/* ─── QUESTION 5: Team Size ─── */}
           {step === 5 && (
             <QuizStep
               question={tr('q5', lang)}
@@ -221,7 +216,6 @@ export default function OnboardingQuiz() {
             />
           )}
 
-          {/* ─── QUESTION 6: Urgency ─── */}
           {step === 6 && (
             <QuizStep
               question={tr('q6', lang)}
@@ -236,7 +230,6 @@ export default function OnboardingQuiz() {
             />
           )}
 
-          {/* ─── RESULT (step 7) ─── */}
           {step === 7 && recommendation && (
             <OnboardingResult
               recommendation={recommendation}
@@ -247,7 +240,6 @@ export default function OnboardingQuiz() {
             />
           )}
 
-          {/* ─── Navigation Buttons (step 1-6) ─── */}
           {step >= 1 && step <= 6 && (
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
               <Button
