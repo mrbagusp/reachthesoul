@@ -34,7 +34,11 @@ export default function OnboardingQuiz() {
 
   // Check if onboarding should show
   useEffect(() => {
+    console.log('[OnboardingQuiz] userId:', userId)
     if (!userId) return
+    shouldShowOnboarding(userId).then((show) => {
+      console.log('[OnboardingQuiz] shouldShow:', show)
+      if (show) {
     shouldShowOnboarding(userId).then((show) => {
       if (show) {
         setIsOpen(true)
