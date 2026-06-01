@@ -14,20 +14,14 @@ import type { Lang } from './translations'
 import QuizStep from './QuizStep'
 import OnboardingResult from './OnboardingResult'
 
-console.log('[OnboardingQuiz] FILE LOADED')
-
 const TOTAL_STEPS = 6
 
 export default function OnboardingQuiz() {
-  console.log('[OnboardingQuiz] COMPONENT RENDERING')
-
   const router = useRouter()
   const [lang] = useState<Lang>(detectLanguage)
 
-  // Auth
   const currentUser = useAuthStore((s) => s.currentUser)
   const userId = currentUser?.uid
-  console.log('[OnboardingQuiz] currentUser:', currentUser?.email, 'userId:', userId)
 
   const {
     step, isOpen, isLoading,
@@ -37,25 +31,16 @@ export default function OnboardingQuiz() {
     setIsOpen, setIsLoading,
   } = useOnboardingStore()
 
-  // Check if onboarding should show
   useEffect(() => {
-    console.log('[OnboardingQuiz] useEffect fired, userId:', userId)
-    if (!userId) {
-      console.log('[OnboardingQuiz] No userId, skipping')
-      return
-    }
+    if (!userId) return
     shouldShowOnboarding(userId).then((show) => {
-      console.log('[OnboardingQuiz] shouldShow result:', show)
       if (show) {
         setIsOpen(true)
         setStep(0)
       }
-    }).catch((err) => {
-      console.error('[OnboardingQuiz] Error checking onboarding:', err)
-    })
+    }).catch(() => {})
   }, [userId, setIsOpen, setStep])
 
-  // Current step can proceed?
   const canProceed = useMemo(() => {
     switch (step) {
       case 0: return true
@@ -69,18 +54,13 @@ export default function OnboardingQuiz() {
     }
   }, [step, orgType, monthlyVolume, channels, painPoint, teamSize, urgency])
 
-  // Build recommendation
   const recommendation = useMemo(() => {
     if (!orgType || !monthlyVolume || !painPoint || !teamSize || !urgency) return null
-    return getRecommendation({
-      orgType, monthlyVolume, channels, painPoint, teamSize, urgency,
-    })
+    return getRecommendation({ orgType, monthlyVolume, channels, painPoint, teamSize, urgency })
   }, [orgType, monthlyVolume, channels, painPoint, teamSize, urgency])
 
-  // Handle "See Result"
   const handleSeeResult = async () => {
     if (!userId || !recommendation || !orgType || !monthlyVolume || !painPoint || !teamSize || !urgency) return
-
     setIsLoading(true)
     try {
       const data: OnboardingResponse = { orgType, monthlyVolume, channels, painPoint, teamSize, urgency }
@@ -100,8 +80,6 @@ export default function OnboardingQuiz() {
     window.open('https://wa.me/6285974773341?text=Hi%2C%20saya%20baru%20mendaftar%20di%20ReachTheSoul%20dan%20ingin%20tahu%20lebih%20lanjut', '_blank')
     setIsOpen(false)
   }
-
-  console.log('[OnboardingQuiz] isOpen:', isOpen, 'step:', step)
 
   if (!isOpen) return null
 

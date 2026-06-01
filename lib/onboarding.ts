@@ -38,7 +38,7 @@ export function getRecommendation(data: OnboardingResponse): Recommendation {
   const hasWhatsApp = channels.includes('whatsapp')
   const isMultiChannel = channels.filter(c => c !== 'none').length >= 2
 
-  // Enterprise
+  // Enterprise — only this one goes to contact
   if (teamSize === 'over15' || orgType === 'denomination') {
     return {
       plan: 'enterprise',
@@ -59,7 +59,7 @@ export function getRecommendation(data: OnboardingResponse): Recommendation {
     }
   }
 
-  // Growth
+  // Growth — always direct to billing
   if (
     monthlyVolume === 'over100' ||
     monthlyVolume === '10to100' && (isMultiChannel || painPoint === 'no_after_hours') ||
@@ -83,12 +83,12 @@ export function getRecommendation(data: OnboardingResponse): Recommendation {
           en: 'Advanced analytics so you know exactly how many have been followed up.',
         },
       ],
-      cta: isHotLead ? 'contact' : 'upgrade',
+      cta: 'upgrade',
       isHotLead,
     }
   }
 
-  // Starter
+  // Starter — always direct to billing
   if (
     hasWhatsApp ||
     monthlyVolume === 'under10' && painPoint !== 'no_system' ||
@@ -112,7 +112,7 @@ export function getRecommendation(data: OnboardingResponse): Recommendation {
           en: 'All conversations are neatly tracked with counseling journal and ticket system.',
         },
       ],
-      cta: isHotLead ? 'contact' : 'upgrade',
+      cta: 'upgrade',
       isHotLead,
     }
   }
