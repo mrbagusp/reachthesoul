@@ -8,6 +8,7 @@ import { useTickets } from "@/hooks/use-firestore-tickets";
 import { useRespondents } from "@/hooks/use-firestore-respondents";
 import { useAuthStore } from "@/store/auth-store";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
+import OnboardingQuiz from "@/components/onboarding/OnboardingQuiz";
 import { UpgradeWelcome } from "@/components/onboarding/UpgradeWelcome";
 import { cn } from "@/lib/utils";
 
