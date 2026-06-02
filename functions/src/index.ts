@@ -5,6 +5,7 @@ import { processIncomingMessage } from "./webhook-processor";
 import { downloadAndUploadMedia, categorizeMimeType } from "./media-helper";
 import { cleanupExpiredOrgData } from "./data-cleanup";
 import { onUserRegistered } from "./new-user-alert";
+import { onOnboardingComplete } from "./welcome-emails";
 import * as admin from "firebase-admin";
 
 // Re-export scheduled function so Firebase deploys it
@@ -12,6 +13,9 @@ export { cleanupExpiredOrgData };
 
 // New-user email alert to superadmin
 export { onUserRegistered };
+
+// Welcome email (triggered by onboarding quiz completion)
+export { onOnboardingComplete };
 
 // Set region to asia-southeast1 (Singapore) — closest to Indonesia
 setGlobalOptions({ region: "asia-southeast1" });

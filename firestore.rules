@@ -237,7 +237,13 @@ service cloud.firestore {
       allow update: if isSignedIn() && isPlatformAdmin();
       allow delete: if false; // Immutable
     }
-
+// --- Onboarding Responses ---
+    match /onboarding_responses/{userId} {
+      allow read:   if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
     // Any collection not explicitly matched is blocked.
   }
 }
