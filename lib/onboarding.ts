@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 
 // ─── Types ──────────────────────────────────────────────
@@ -165,14 +165,13 @@ export async function saveOnboardingResponse(
     convertedAt: null,
   })
 
-  // Mark user as onboarded
-  const userRef = doc(db, 'users', userId)
-  const userDoc = await getDoc(userRef)
-  if (userDoc.exists()) {
-    await setDoc(userRef, {
-      ...userDoc.data(),
+  // Mark user as onboarded — use updateDoc to avoid Firestore rules conflict
+  try {
+    await updateDoc(doc(db, 'users', userId), {
       onboardingComplete: true,
       onboardingCompletedAt: serverTimestamp(),
-    }, { merge: true })
+    })
+  } catch (err) {
+    console.error('Failed to update user onboardingComplete:', err)
   }
 }
