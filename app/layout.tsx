@@ -7,6 +7,9 @@ export const metadata: Metadata = {
     template: '%s | ReachTheSoul',
   },
   description: 'AI-powered prayer and counseling software for churches and ministries. Manage prayer requests, pastoral care, and counseling conversations across WhatsApp, Instagram, and Facebook — all in one inbox. 24/7 AI first response with human counselor escalation.',
+  other: {
+    'facebook-domain-verification': '9qqpzy8cg5bd70dh0mpvyhvjaxnpr0',
+  },
   keywords: [
     // Primary — what people search for
     'prayer and counseling software', 'prayer center tool', 'christian prayer tool',
