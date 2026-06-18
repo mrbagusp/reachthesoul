@@ -17,6 +17,21 @@ export { onUserRegistered };
 // Welcome email (triggered by onboarding quiz completion)
 export { onOnboardingComplete };
 
+// Campaign Engine (Lead Blaster)
+export {
+  createCampaign,
+  processCampaignQueue,
+  trackEmailEvent,
+  getCampaignStats,
+} from "./campaignEngine";
+
+// Drip Campaign Engine (Auto follow-up)
+export {
+  onUserSignup,
+  processDripQueue,
+  cancelDripOnUpgrade,
+} from "./dripEngine";
+
 // Set region to asia-southeast1 (Singapore) — closest to Indonesia
 setGlobalOptions({ region: "asia-southeast1" });
 

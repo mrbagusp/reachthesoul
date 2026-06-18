@@ -2,6 +2,7 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { getFunctions, type Functions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY            || "AIzaSyBwDi5SOFvQU_k-2U36V8vphzTs7Df6lSw",
@@ -14,9 +15,10 @@ const firebaseConfig = {
 };
 
 // Lazy singletons — only initialized in browser, never during SSR
-let _app:  FirebaseApp | undefined;
-let _auth: Auth       | undefined;
-let _db:   Firestore  | undefined;
+let _app:       FirebaseApp | undefined;
+let _auth:      Auth       | undefined;
+let _db:        Firestore  | undefined;
+let _functions: Functions  | undefined;
 
 export function getFirebaseApp(): FirebaseApp {
   if (!_app) {
@@ -39,8 +41,14 @@ export function getFirebaseDb(): Firestore {
   return _db;
 }
 
+export function getFirebaseFunctions(): Functions {
+  if (!_functions) {
+    _functions = getFunctions(getFirebaseApp(), "asia-southeast1");
+  }
+  return _functions;
+}
+
 // Convenience re-exports — safe to use in client components
-// Calling these at module level inside client components is fine;
-// Next.js only SSR-evaluates server components.
-export const auth = getFirebaseAuth();
-export const db   = getFirebaseDb();
+export const auth      = getFirebaseAuth();
+export const db        = getFirebaseDb();
+export const functions = getFirebaseFunctions();

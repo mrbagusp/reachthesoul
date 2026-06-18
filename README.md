@@ -1,59 +1,176 @@
-# ReachTheSoul
+# RTS Campaign & Drip Engine
 
-**Ministry Growth Platform — AI-Powered, Human-Hearted**
+Sistem Lead Blaster + Auto Drip Campaign untuk ReachTheSoul.
+Upload CSV lead → kirim email/WA → auto follow-up saat sign up → track semuanya.
 
-Every Conversation. Every Soul. All in One Place.
+## Architecture
 
-## Overview
+```
+┌─────────────────────────────────────────────────────────┐
+│                    SUPERADMIN UI                        │
+│  CampaignManager.tsx (upload CSV, pilih template, send) │
+└───────────────────┬─────────────────────────────────────┘
+                    │ httpsCallable
+                    ▼
+┌─────────────────────────────────────────────────────────┐
+│               CLOUD FUNCTIONS                           │
+│                                                         │
+│  campaignEngine.ts                                      │
+│  ├── createCampaign()      ← called from UI             │
+│  ├── processCampaignQueue  ← runs every 30 min          │
+│  ├── trackEmailEvent       ← open/click tracking        │
+│  └── getCampaignStats()    ← called from UI             │
+│                                                         │
+│  dripEngine.ts                                          │
+│  ├── onUserSignup          ← Firestore trigger          │
+│  ├── processDripQueue      ← runs every 1 hour          │
+│  └── cancelDripOnUpgrade   ← Firestore trigger          │
+│                                                         │
+│  emailService.ts                                        │
+│  └── sendEmail()           ← Resend API                 │
+└───────────────────┬─────────────────────────────────────┘
+                    │
+                    ▼
+┌─────────────────────────────────────────────────────────┐
+│                   FIRESTORE                             │
+│  campaigns/              ← campaign metadata            │
+│  campaign_recipients/    ← individual recipients        │
+│  drip_templates/         ← drip sequence definitions    │
+│  drip_queue/             ← scheduled drip messages      │
+└─────────────────────────────────────────────────────────┘
+```
 
-ReachTheSoul is a multi-tenant SaaS platform for churches, ministries, and Christian organizations to manage outreach conversations, counseling, and follow-up across digital channels — powered by AI with human on-demand.
+## Setup Steps
 
-## Tech Stack
-
-- **Frontend:** Next.js 15 + React 19 + TypeScript + Tailwind CSS 4
-- **Backend:** Firebase (Firestore + Auth + Cloud Functions v2 + Storage)
-- **AI:** OpenAI / Anthropic (configurable per organization)
-- **Channels:** WhatsApp (Meta + Fonnte), Instagram, Facebook, YouTube, Website
-- **State:** Zustand
-- **Deploy:** Vercel (frontend) + Firebase (functions)
-
-## Getting Started
+### 1. Resend (Email Provider)
 
 ```bash
-npm install
-npm run dev
+# Sign up di resend.com (free: 100 emails/day, cukup untuk 50/day)
+# Add domain reachthesoul.org → dapatkan SPF/DKIM records
+# Tambahkan records ke DNS domain kamu
+# Copy API key
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+### 2. Firebase Secret
 
-## Project Structure
-
-```
-app/              → Next.js pages & API routes
-components/       → React components
-functions/        → Firebase Cloud Functions (webhooks, triggers)
-hooks/            → Custom React hooks
-lib/              → Firebase config, Firestore services, AI engine
-store/            → Zustand stores (auth, org, presence, calls)
-types/            → TypeScript type definitions
+```bash
+# Set Resend API key sebagai Firebase secret
+firebase functions:secrets:set RESEND_API_KEY
+# Paste API key saat diminta
 ```
 
-## Multi-Tenant Architecture
+### 3. Install Dependencies
 
-Every organization (church/ministry) gets isolated data through `orgId` scoping:
-- All Firestore queries filter by `orgId`
-- Security rules validate org membership
-- Each org has independent channel config, AI settings, and branding
-- Webhook URLs are org-scoped: `?org={orgId}`
+```bash
+# Di folder functions/
+npm install papaparse
+npm install -D @types/papaparse
 
-## Environment Variables
+# Di folder frontend (Next.js)
+npm install papaparse
+npm install -D @types/papaparse
+```
 
-Copy `.env.example` to `.env.local` and fill in your values.
+### 4. Deploy Cloud Functions
 
-## License
+Tambahkan ke `functions/src/index.ts`:
 
-Proprietary — All rights reserved.
+```typescript
+// Campaign Engine (Lead Blaster)
+export {
+  createCampaign,
+  processCampaignQueue,
+  trackEmailEvent,
+  getCampaignStats,
+} from "./campaignEngine";
 
----
+// Drip Campaign Engine
+export {
+  onUserSignup,
+  processDripQueue,
+  cancelDripOnUpgrade,
+} from "./dripEngine";
+```
 
-**ReachTheSoul** — *Where Every Soul Finds Care*
+```bash
+firebase deploy --only functions
+```
+
+### 5. Add Superadmin UI
+
+Copy `CampaignManager.tsx` ke `components/superadmin/` dan import di superadmin page:
+
+```tsx
+import CampaignManager from "@/components/superadmin/CampaignManager";
+
+export default function SuperAdminCampaigns() {
+  return <CampaignManager />;
+}
+```
+
+### 6. Firestore Indexes
+
+Buat composite indexes di Firebase Console:
+
+```
+Collection: campaign_recipients
+  Fields: campaignId ASC, status ASC
+
+Collection: drip_queue
+  Fields: status ASC, scheduledAt ASC
+```
+
+### 7. Seed Default Drip Template (Optional)
+
+Jika ingin mengedit drip sequence dari Firestore Console:
+
+```
+Collection: drip_templates
+Document ID: trial_signup
+Fields: (copy dari DEFAULT_TRIAL_DRIP di dripEngine.ts)
+```
+
+## CSV Format
+
+Upload file CSV dengan kolom berikut (case-insensitive, bahasa Indonesia juga dikenali):
+
+```csv
+name,church,city,email,whatsapp
+Ps. Jeffrey Rachmat,JPCC Jakarta,Jakarta,contact@jpcc.org,087888804799
+Ps. Philip Mantofa,GMS Jakarta,Jakarta,jakarta@gms.church,081521200080
+```
+
+Kolom yang dikenali:
+- name / Name / nama / Nama
+- church / Church / gereja / Gereja / Nama Gereja
+- city / City / kota / Kota
+- email / Email / E-mail
+- whatsapp / WhatsApp / wa / WA / phone / Phone / telepon / Telepon
+
+## Flow Summary
+
+### Lead Blaster Flow
+1. Upload CSV di superadmin → create campaign + recipients
+2. `processCampaignQueue` jalan setiap 30 menit
+3. Kirim 10 email per batch (rate-limited 3 detik per email)
+4. Track open (pixel) dan click (redirect)
+5. Stats real-time di dashboard
+
+### Drip Campaign Flow
+1. User sign up → `onUserSignup` trigger
+2. Generate 7 scheduled messages (email + WA)
+3. `processDripQueue` jalan setiap jam, kirim yang sudah due
+4. User upgrade ke paid → `cancelDripOnUpgrade` cancel pending messages
+
+## Rate Limits
+- Resend free: 100 emails/day, 3,000/month
+- Campaign batch: 10 emails/30 menit = max ~480/day
+- Drip batch: 20 messages/hour
+- Keduanya cukup untuk 50 emails/day target kamu
+
+## TODO
+- [ ] WhatsApp integration (Gupshup/Fonnte API) di campaignEngine & dripEngine
+- [ ] Unsubscribe endpoint
+- [ ] Drip template editor di superadmin UI
+- [ ] A/B testing (kirim 2 subject line, track mana yang lebih tinggi open rate)
+- [ ] Webhook Resend untuk bounce/complaint tracking
