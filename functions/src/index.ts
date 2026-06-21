@@ -18,19 +18,14 @@ export { onUserRegistered };
 export { onOnboardingComplete };
 
 // Campaign Engine (Lead Blaster)
-export {
-  createCampaign,
-  processCampaignQueue,
-  trackEmailEvent,
-  getCampaignStats,
-} from "./campaignEngine";
+export { createCampaign, processCampaignQueue } from "./campaignEngine";
 
-// Drip Campaign Engine (Auto follow-up)
-export {
-  onUserSignup,
-  processDripQueue,
-  cancelDripOnUpgrade,
-} from "./dripEngine";
+// Drip Campaign Engine — DISABLED FOR NOW
+// export {
+//   onUserSignup,
+//   processDripQueue,
+//   cancelDripOnUpgrade,
+// } from "./dripEngine";
 
 // Set region to asia-southeast1 (Singapore) — closest to Indonesia
 setGlobalOptions({ region: "asia-southeast1" });
@@ -61,8 +56,6 @@ async function getChannelConfig(orgId: string): Promise<Record<string, any>> {
 
 // ────────────────────────────────────────────────────────────────────────────
 // OUTBOUND REPLY TRIGGER
-// When an agent sends a message, auto-send it to the respondent
-// via the original channel. Config read from organizations/{orgId}.channelConfig
 // ────────────────────────────────────────────────────────────────────────────
 export const onMessageCreated = onDocumentCreated(
   "tickets/{ticketId}/messages/{messageId}",
@@ -70,7 +63,6 @@ export const onMessageCreated = onDocumentCreated(
     const message = event.data?.data();
     if (!message) return;
 
-    // Send outbound for staff messages (agent/admin/supervisor) AND AI messages, NOT internal
     const outboundRoles = ["agent", "admin", "supervisor", "ai"];
     if (!outboundRoles.includes(message.senderRole) || message.isInternal) {
       return;
@@ -80,7 +72,6 @@ export const onMessageCreated = onDocumentCreated(
     const db = getDb();
 
     try {
-      // Get ticket
       const ticketDoc = await db.doc(`tickets/${ticketId}`).get();
       if (!ticketDoc.exists) {
         logger.error("[onMessageCreated] Ticket not found:", ticketId);
@@ -90,7 +81,6 @@ export const onMessageCreated = onDocumentCreated(
       const channel = ticket.channel ?? "";
       const orgId = ticket.orgId ?? "";
 
-      // Get respondent
       const respondentDoc = await db.doc(`respondents/${ticket.respondentId}`).get();
       if (!respondentDoc.exists) {
         logger.error("[onMessageCreated] Respondent not found:", ticket.respondentId);
@@ -104,10 +94,8 @@ export const onMessageCreated = onDocumentCreated(
         return;
       }
 
-      // Get channel config from organization document (multi-tenant)
       const config = await getChannelConfig(orgId);
 
-      // ── Send via Fonnte (WhatsApp) ──
       if (channel === "whatsapp_fonnte" || channel === "manual" ||
           config.active_whatsapp_provider === "fonnte") {
         const token = config.fonnte_token ?? "";
@@ -134,13 +122,12 @@ export const onMessageCreated = onDocumentCreated(
         logger.info(`[onMessageCreated] Fonnte → ${cleanPhone}:`, JSON.stringify(result));
       }
 
-      // ── Send via Meta WhatsApp Cloud API ──
       else if (channel === "whatsapp_meta" ||
                config.active_whatsapp_provider === "meta") {
         const waToken = config.whatsapp_access_token ?? "";
         const waPhoneId = config.whatsapp_phone_number_id ?? "";
         if (!waToken || !waPhoneId) {
-          logger.warn("[onMessageCreated] Meta WhatsApp credentials not configured in system_config/channel_settings");
+          logger.warn("[onMessageCreated] Meta WhatsApp credentials not configured");
           return;
         }
 
@@ -167,15 +154,13 @@ export const onMessageCreated = onDocumentCreated(
         logger.info(`[onMessageCreated] Meta WA → ${cleanPhone}:`, JSON.stringify(result));
       }
 
-      // ── Facebook Messenger ──
       else if (channel === "facebook") {
         const fbToken = config.facebook_page_access_token ?? "";
         if (!fbToken) {
-          logger.warn("[onMessageCreated] Facebook page token not configured in system_config/channel_settings");
+          logger.warn("[onMessageCreated] Facebook page token not configured");
           return;
         }
 
-        // Use channelSenderId (PSID — Page-Scoped User ID)
         const recipientId = respondent.channelSenderId ?? "";
         if (!recipientId) {
           logger.warn("[onMessageCreated] No channelSenderId for Facebook recipient");
@@ -199,7 +184,6 @@ export const onMessageCreated = onDocumentCreated(
         logger.info(`[onMessageCreated] FB Messenger → ${recipientId}:`, JSON.stringify(result));
       }
 
-      // ── Instagram DM ──
       else if (channel === "instagram") {
         const igToken = config.instagram_access_token ?? config.facebook_page_access_token ?? "";
         if (!igToken) {
@@ -259,7 +243,6 @@ export const webhookWhatsapp = onRequest({ cors: true }, async (req, res) => {
 
   if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
 
-  // Extract org from query param: ?org=orgId
   const orgId = req.query.org as string;
   if (!orgId) {
     res.status(400).json({ error: "Missing org parameter" });
@@ -312,22 +295,19 @@ export const webhookFonnte = onRequest({ cors: true }, async (req, res) => {
 
     logger.info(`[webhookFonnte] Incoming — sender: ${sender}, device: ${device}, fromMe: ${body.fromMe}, message: "${message.substring(0, 50)}..."`);
 
-    // Skip echo messages — multiple checks
     const isEcho = body.fromMe === true || body.from_me === true ||
                    body.isFromMe === true || body.is_from_me === true ||
                    message.includes("_Sent via fonnte.com_") ||
                    message.includes("Sent via fonnte") ||
                    body.status === "sent" || body.status === "delivered" || body.status === "read" ||
-                   (device && sender === device) ||  // sender is our own device number
-                   !message.trim();  // empty messages (status updates)
+                   (device && sender === device) ||
+                   !message.trim();
 
     if (isEcho) {
       res.status(200).json({ status: "ok", skipped: "echo" });
       return;
     }
 
-    // Skip if sender looks like our own number (self-loop prevention)
-    // Load org to check device number
     const db = getDb();
     const orgDoc = await db.doc(`organizations/${orgId}`).get();
     if (orgDoc.exists) {
@@ -338,8 +318,6 @@ export const webhookFonnte = onRequest({ cors: true }, async (req, res) => {
       }
     }
 
-    // ANTI-ECHO: Simple approach — if this message content was recently sent by our AI,
-    // it's an echo from Fonnte. We store last AI reply in org document.
     if (message.trim() && orgDoc.exists) {
       const lastAIReply = orgDoc.data()?.channelConfig?.last_ai_reply ?? "";
       if (lastAIReply && message.trim() === lastAIReply.trim()) {
@@ -349,9 +327,6 @@ export const webhookFonnte = onRequest({ cors: true }, async (req, res) => {
       }
     }
 
-    // Parse attachments from Fonnte
-    // Fonnte sends media URL in `url` field, type in `type` field
-    // type can be: image, video, audio, document, sticker, location, etc.
     const attachments = await parseFonnteAttachments(body);
 
     await processIncomingMessage({
@@ -371,16 +346,13 @@ export const webhookFonnte = onRequest({ cors: true }, async (req, res) => {
   }
 });
 
-// Parse Fonnte attachments
 async function parseFonnteAttachments(body: any): Promise<any[]> {
   const attachments: any[] = [];
 
-  // Fonnte sends media URL in body.url
   const mediaUrl = body.url ?? body.media ?? body.file;
   const mediaType = (body.type ?? "").toLowerCase();
 
   if (mediaUrl && mediaType && mediaType !== "text") {
-    // Generate temporary IDs for storage path (will be reorganized later if needed)
     const tempTicketId = "incoming";
     const tempMessageId = `fonnte_${Date.now()}`;
 
@@ -533,12 +505,9 @@ export const webhookCall = onRequest({ cors: true }, async (req, res) => {
     res.status(500).json({ error: "Internal error" });
   }
 });
+
 // ────────────────────────────────────────────────────────────────────────────
 // AI AUTO-REPLY TRIGGER
-// When a respondent sends a message, AI handles it (if enabled for channel).
-// Detects escalation triggers → hands off to human agent.
-//
-// Config read from Firestore: system_config/ai_settings
 // ────────────────────────────────────────────────────────────────────────────
 export const onRespondentMessage = onDocumentCreated(
   {
@@ -549,26 +518,21 @@ export const onRespondentMessage = onDocumentCreated(
     const message = event.data?.data();
     if (!message) return;
 
-    // Only process respondent messages (not agent/AI/system)
     if (message.senderRole !== "respondent" || message.isInternal) return;
 
     const ticketId = event.params.ticketId;
     const db = getDb();
 
     try {
-      // Get ticket to check if AI should handle it
       const ticketDoc = await db.doc(`tickets/${ticketId}`).get();
       if (!ticketDoc.exists) return;
       const ticket = ticketDoc.data()!;
 
-      // Skip if ticket is explicitly handled by human or escalated
-      // undefined or "ai" = AI handles it
       if (ticket.handledBy === "human" || ticket.handledBy === "escalated") {
         logger.info(`[onRespondentMessage] Ticket ${ticketId} is ${ticket.handledBy}, skipping AI`);
         return;
       }
 
-      // Load AI settings from organization document
       const orgId = ticket.orgId ?? "";
       if (!orgId) {
         logger.info("[onRespondentMessage] No orgId on ticket");
@@ -581,17 +545,14 @@ export const onRespondentMessage = onDocumentCreated(
       }
       const aiConfig = orgDoc.data()?.aiConfig ?? {};
 
-      // Check if AI is enabled globally
       if (!aiConfig.enabled || !aiConfig.autoReply) {
         logger.info("[onRespondentMessage] AI disabled or autoReply off");
         return;
       }
 
-      // Idempotency: skip if this message already has an AI reply after it
       const messageId = event.params.messageId;
       const messageCreatedAt = message.createdAt?.toMillis?.() ?? Date.now();
 
-      // COOLDOWN: check if ANY AI message was sent in last 60 seconds for this ticket
       const recentMessages = await db.collection(`tickets/${ticketId}/messages`)
         .orderBy("createdAt", "desc")
         .limit(5)
@@ -601,7 +562,7 @@ export const onRespondentMessage = onDocumentCreated(
         const data = d.data();
         if (data.senderRole !== "ai") return false;
         const msgTime = data.createdAt?.toMillis?.() ?? 0;
-        return (now - msgTime) < 5000; // within last 5 seconds
+        return (now - msgTime) < 5000;
       });
       if (hasRecentAI) {
         logger.info(`[onRespondentMessage] AI replied within last 5s, skipping to prevent loop`);
@@ -621,10 +582,8 @@ export const onRespondentMessage = onDocumentCreated(
         return;
       }
 
-      // Check if AI is enabled for this channel
       const channel = ticket.channel ?? "";
       const channelToggles = aiConfig.channelToggles ?? {};
-      // Map Firestore channel names to settings keys (PascalCase)
       const channelKey =
         channel === "whatsapp_fonnte" || channel === "whatsapp_meta" ? "WhatsApp" :
         channel === "facebook" ? "Facebook" :
@@ -636,7 +595,6 @@ export const onRespondentMessage = onDocumentCreated(
         return;
       }
 
-      // ── Check escalation triggers (keyword-based) ──
       const messageContent = (message.content ?? "").toLowerCase();
       const triggers = aiConfig.escalationTriggers ?? [];
       let detectedTrigger: string | null = null;
@@ -655,8 +613,6 @@ export const onRespondentMessage = onDocumentCreated(
         if (detectedTrigger) break;
       }
 
-      // ── AI Contextual Detection (when keywords miss) ──
-      // Uses LLM to analyze message context for crisis signals that keywords can't catch
       const provider = aiConfig.provider ?? "openai";
       const apiKey = aiConfig.apiKey ?? "";
       const model = aiConfig.model ?? "gpt-4o-mini";
@@ -666,7 +622,6 @@ export const onRespondentMessage = onDocumentCreated(
         try {
           logger.info(`[onRespondentMessage] Running AI contextual crisis detection for ticket ${ticketId}`);
 
-          // Fetch recent messages for conversation context
           const contextSnap = await db.collection(`tickets/${ticketId}/messages`)
             .orderBy("createdAt", "desc")
             .limit(6)
@@ -752,7 +707,6 @@ If the message is casual, informational, or does not indicate crisis, return:
           }
 
           if (aiDetectionResult) {
-            // Strip markdown code fences if present
             const cleaned = aiDetectionResult.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
             const parsed = JSON.parse(cleaned);
             if (parsed.needsEscalation && parsed.confidence >= 0.7) {
@@ -766,14 +720,12 @@ If the message is casual, informational, or does not indicate crisis, return:
           }
         } catch (aiDetectErr) {
           logger.error("[onRespondentMessage] AI contextual detection error:", aiDetectErr);
-          // Non-fatal: fall through to normal AI reply
         }
       }
 
       if (detectedTrigger) {
         logger.info(`[onRespondentMessage] Escalation detected (${escalationMethod}): ${detectedTrigger}`);
 
-        // Build escalation metadata
         const escalationData: Record<string, any> = {
           reason: detectedTrigger,
           method: escalationMethod,
@@ -782,14 +734,13 @@ If the message is casual, informational, or does not indicate crisis, return:
           escalationData.aiAnalysis = aiAnalysis;
         }
 
-        // Mark ticket as escalated
         await db.doc(`tickets/${ticketId}`).update({
           handledBy: "escalated",
           escalation: escalationData,
           priority: "high",
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        // Add internal system message
+
         const systemNote = escalationMethod === "ai_contextual"
           ? `⚠️ Escalated to human agent (AI contextual detection: ${detectedTrigger})\n💡 AI Analysis: ${aiAnalysis}`
           : `⚠️ Escalated to human agent (keyword trigger: ${detectedTrigger})`;
@@ -801,7 +752,7 @@ If the message is casual, informational, or does not indicate crisis, return:
           isInternal: true,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        // Send visible reply to respondent — they need to know a human is coming
+
         const escalationReply = aiConfig.escalationReplyMessage
           ?? "Thank you for reaching out. I'm connecting you with a team member who can assist you personally. They'll be with you shortly! 🙏";
         await db.collection(`tickets/${ticketId}/messages`).add({
@@ -813,21 +764,19 @@ If the message is casual, informational, or does not indicate crisis, return:
           aiGenerated: true,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
-        // Save last AI reply for echo detection
+
         try {
           await db.doc(`organizations/${orgId}`).update({
             "channelConfig.last_ai_reply": escalationReply,
           });
         } catch (e) { /* non-critical */ }
 
-        // ── EMERGENCY NOTIFICATION: Send WA to emergency contacts ──
         try {
           const orgData = orgDoc.data();
           const emergencyContacts = orgData?.emergencyContacts ?? [];
           const channelConfig = orgData?.channelConfig ?? {};
           const fonnteToken = channelConfig.fonnte_token ?? "";
 
-          // Get respondent info for context
           const respondentDoc = await db.doc(`respondents/${ticket.respondentId}`).get();
           const respondentName = respondentDoc.exists ? (respondentDoc.data()?.displayName ?? "Unknown") : "Unknown";
           const ticketNumber = ticket.ticketNumber ?? ticketId;
@@ -871,14 +820,11 @@ If the message is casual, informational, or does not indicate crisis, return:
         return;
       }
 
-      // ── Call AI API ──
-
       if (!apiKey) {
         logger.warn("[onRespondentMessage] No API key configured");
         return;
       }
 
-      // Fetch last 10 messages for context
       const messagesSnap = await db.collection(`tickets/${ticketId}/messages`)
         .orderBy("createdAt", "desc")
         .limit(10)
@@ -947,7 +893,6 @@ If the message is casual, informational, or does not indicate crisis, return:
         return;
       }
 
-      // ── Save AI reply as message (this will trigger onMessageCreated to send to channel) ──
       await db.collection(`tickets/${ticketId}/messages`).add({
         senderId: "ai_assistant",
         senderName: "AI Assistant",
@@ -958,13 +903,11 @@ If the message is casual, informational, or does not indicate crisis, return:
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Mark ticket as handled by AI
       await db.doc(`tickets/${ticketId}`).update({
         handledBy: "ai",
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Save last AI reply for echo detection in webhookFonnte
       try {
         await db.doc(`organizations/${orgId}`).update({
           "channelConfig.last_ai_reply": aiReply.trim(),
@@ -975,8 +918,6 @@ If the message is casual, informational, or does not indicate crisis, return:
 
       logger.info(`[onRespondentMessage] AI replied to ticket ${ticketId}`);
 
-      // ── DATA EXTRACTION — extract respondent info from conversation ──
-      // Only run extraction every 2 respondent messages to save cost and improve accuracy
       try {
         const respondentMessagesCount = history.filter((m) => m.role === "user").length;
         if (respondentMessagesCount >= 2 && respondentMessagesCount % 2 === 0) {
@@ -984,7 +925,6 @@ If the message is casual, informational, or does not indicate crisis, return:
         }
       } catch (extractErr) {
         logger.error("[onRespondentMessage] Data extraction failed:", extractErr);
-        // Don't fail the whole function if extraction fails
       }
     } catch (err) {
       logger.error("[onRespondentMessage] Error:", err);
@@ -994,7 +934,6 @@ If the message is casual, informational, or does not indicate crisis, return:
 
 // ────────────────────────────────────────────────────────────────────────────
 // Extract respondent data from conversation using AI
-// Only updates fields that are currently empty/null
 // ────────────────────────────────────────────────────────────────────────────
 async function extractRespondentData(
   ticketId: string,
@@ -1005,12 +944,10 @@ async function extractRespondentData(
 ): Promise<void> {
   const db = getDb();
 
-  // Get current respondent data
   const respondentDoc = await db.doc(`respondents/${respondentId}`).get();
   if (!respondentDoc.exists) return;
   const respondent = respondentDoc.data()!;
 
-  // Only extract fields that are empty
   const needsExtraction = {
     fullName: !respondent.fullName || respondent.fullName.startsWith("+") || respondent.fullName.startsWith("Facebook User") || respondent.fullName.startsWith("WhatsApp User"),
     city: !respondent.city,
@@ -1019,13 +956,11 @@ async function extractRespondentData(
     problemCategories: !respondent.problemCategories || respondent.problemCategories.length === 0,
   };
 
-  // If nothing to extract, skip
   if (!Object.values(needsExtraction).some((v) => v)) {
     logger.info(`[extractRespondentData] All fields already filled for ${respondentId}`);
     return;
   }
 
-  // Build conversation text
   const conversationText = history
     .map((m) => `${m.role === "user" ? "User" : "Counselor"}: ${m.content}`)
     .join("\n");
@@ -1084,7 +1019,6 @@ ${conversationText}`;
       return;
     }
 
-    // Build update object — only update fields that are currently empty and have extracted value
     const updates: Record<string, any> = {};
     const updatedFields: string[] = [];
 
@@ -1112,12 +1046,10 @@ ${conversationText}`;
       }
     }
 
-    // If we have updates, save them
     if (Object.keys(updates).length > 0) {
       updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
       await db.doc(`respondents/${respondentId}`).update(updates);
 
-      // Add internal note to ticket for audit
       await db.collection(`tickets/${ticketId}/messages`).add({
         senderId: "system",
         senderName: "System",

@@ -1,6 +1,6 @@
 /**
  * RTS Drip Campaign Engine
- * Fixed to match RTS codebase pattern
+ * Fixed: region set to asia-southeast1 on all functions
  */
 
 import { onSchedule } from "firebase-functions/v2/scheduler";
@@ -13,16 +13,11 @@ import {
   wrapInEmailTemplate,
 } from "./emailService";
 
-// Lazy Firestore — same pattern as index.ts
+
 function getDb() {
-  if (!admin.apps.length) admin.initializeApp();
+  
   return admin.firestore();
 }
-
-
-// ============================================================
-// DEFAULT DRIP TEMPLATE
-// ============================================================
 
 const DEFAULT_TRIAL_DRIP = {
   name: "Trial Signup Sequence",
@@ -131,13 +126,8 @@ Tim ReachTheSoul`,
   ],
 };
 
-
-// ============================================================
-// 1. TRIGGER: User signs up → create drip queue
-// ============================================================
-
 export const onUserSignup = onDocumentCreated(
-  "organizations/{orgId}",
+  { document: "organizations/{orgId}", region: "asia-southeast1" },
   async (event) => {
     const orgData = event.data?.data();
     if (!orgData) return;
@@ -147,7 +137,6 @@ export const onUserSignup = onDocumentCreated(
 
     logger.info("New org signup — creating drip sequence", { orgId });
 
-    // Get active drip template
     const templates = await db
       .collection("drip_templates")
       .where("trigger", "==", "user_signup")
@@ -197,18 +186,11 @@ export const onUserSignup = onDocumentCreated(
   }
 );
 
-
-// ============================================================
-// 2. PROCESS DRIP QUEUE (runs every hour)
-// ============================================================
-
-const DRIP_BATCH_SIZE = 20;
-const DRIP_DELAY_MS = 2000;
-
 export const processDripQueue = onSchedule(
   {
     schedule: "every 1 hours",
     timeoutSeconds: 300,
+    region: "asia-southeast1",
   },
   async () => {
     const db = getDb();
@@ -219,7 +201,7 @@ export const processDripQueue = onSchedule(
       .where("status", "==", "pending")
       .where("scheduledAt", "<=", now)
       .orderBy("scheduledAt")
-      .limit(DRIP_BATCH_SIZE)
+      .limit(20)
       .get();
 
     if (pendingMessages.empty) {
@@ -265,20 +247,15 @@ export const processDripQueue = onSchedule(
         logger.info("Drip WA queued", { phone: msg.recipientPhone, step: msg.stepNumber });
       }
 
-      await new Promise(resolve => setTimeout(resolve, DRIP_DELAY_MS));
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
     logger.info("Drip batch processed", { sent, failed });
   }
 );
 
-
-// ============================================================
-// 3. CANCEL DRIP: when org upgrades to paid
-// ============================================================
-
 export const cancelDripOnUpgrade = onDocumentUpdated(
-  "organizations/{orgId}",
+  { document: "organizations/{orgId}", region: "asia-southeast1" },
   async (event) => {
     const before = event.data?.before.data();
     const after = event.data?.after.data();

@@ -244,6 +244,13 @@ service cloud.firestore {
       allow update: if isSignedIn() && request.auth.uid == userId;
       allow delete: if false;
     }
+    // ─── Campaign Manager ─────────────────────────────────────────
+    match /campaigns/{campaignId} {
+      allow read, write: if isSignedIn();
+    }
+    match /campaign_recipients/{recipientId} {
+      allow read, write: if isSignedIn();
+    }
     // Any collection not explicitly matched is blocked.
   }
 }
