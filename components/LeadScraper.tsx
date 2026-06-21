@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 
 interface Lead {
   id: string;
@@ -15,14 +15,22 @@ interface Lead {
   city: string;
 }
 
+const QUERY_VARIATIONS: Record<string, string[]> = {
+  "church": ["church", "christian church", "protestant church", "catholic church", "pentecostal church", "chapel", "cathedral", "baptist church", "methodist church", "evangelical church"],
+  "gereja": ["gereja", "gereja kristen", "gereja protestan", "gereja katolik", "gereja pantekosta", "kapel", "gereja baptis", "gereja injili"],
+  "christian ministry": ["christian ministry", "ministry", "christian organization", "bible ministry", "evangelism ministry", "outreach ministry"],
+  "prayer ministry": ["prayer ministry", "prayer center", "prayer hotline", "christian counseling", "pastoral care center"],
+};
+
 const PRESET_SEARCHES = [
   { label: "Gereja di Indonesia", queries: [{ q: "church", cities: "Jakarta,Surabaya,Bandung,Medan,Semarang" }, { q: "gereja", cities: "Jakarta,Surabaya,Bandung" }] },
-  { label: "Jakarta (detail)", queries: [{ q: "church", cities: "Jakarta Selatan,Jakarta Utara,Jakarta Barat,Jakarta Timur,Jakarta Pusat" }] },
+  { label: "Jakarta (detail)", queries: [{ q: "church", cities: "Jakarta Selatan,Jakarta Utara,Jakarta Barat,Jakarta Timur,Jakarta Pusat" }, { q: "gereja", cities: "Jakarta Selatan,Jakarta Utara,Jakarta Barat,Jakarta Timur" }] },
   { label: "Churches in USA", queries: [{ q: "church", cities: "Dallas,Nashville,Atlanta,Houston,Charlotte" }] },
   { label: "Churches in Africa", queries: [{ q: "church", cities: "Lagos,Nairobi,Accra,Kampala,Johannesburg" }] },
   { label: "Churches in Asia Pacific", queries: [{ q: "church", cities: "Manila,Singapore,Kuala Lumpur,Seoul,Sydney" }] },
-  { label: "Christian Ministry", queries: [{ q: "christian ministry", cities: "Dallas,Nashville,Atlanta" }] },
-  { label: "Prayer Ministry", queries: [{ q: "prayer ministry", cities: "Jakarta,Lagos,Manila" }] },
+  { label: "Churches in Europe", queries: [{ q: "church", cities: "London,Amsterdam,Berlin,Paris,Stockholm" }] },
+  { label: "Christian Ministry", queries: [{ q: "christian ministry", cities: "Dallas,Nashville,Atlanta,Houston" }] },
+  { label: "Prayer Ministry", queries: [{ q: "prayer ministry", cities: "Jakarta,Lagos,Manila,Nairobi" }] },
 ];
 
 export default function LeadScraper() {
@@ -30,88 +38,128 @@ export default function LeadScraper() {
   const [cities, setCities] = useState("Jakarta");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [searching, setSearching] = useState(false);
+  const [deepSearching, setDeepSearching] = useState(false);
+  const [deepProgress, setDeepProgress] = useState({ done: 0, total: 0, current: "" });
   const [enriching, setEnriching] = useState(false);
   const [enrichProgress, setEnrichProgress] = useState({ done: 0, total: 0 });
   const [error, setError] = useState("");
   const [searchLog, setSearchLog] = useState<string[]>([]);
+  const stopRef = useRef(false);
 
-  // Search Google Places
-  const handleSearch = useCallback(async (searchQuery?: string, searchCities?: string) => {
-    const q = searchQuery || query;
-    const c = searchCities || cities;
+  const seenIdsRef = useRef<Set<string>>(new Set());
 
-    if (!q || !c) { setError("Query and cities required"); return; }
+  // Core search function
+  const doSearch = useCallback(async (q: string, city: string): Promise<Lead[]> => {
+    try {
+      const res = await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q, city }),
+      });
+      const data = await res.json();
+      if (data.error) return [];
 
+      const newLeads: Lead[] = [];
+      for (const place of data.places || []) {
+        if (seenIdsRef.current.has(place.id)) continue;
+        seenIdsRef.current.add(place.id);
+        newLeads.push({
+          ...place,
+          email: "",
+          emailStatus: place.website ? "pending" : "not_found",
+          city,
+        });
+      }
+      return newLeads;
+    } catch {
+      return [];
+    }
+  }, []);
+
+  // Simple search (1 query)
+  const handleSearch = useCallback(async () => {
+    if (!query || !cities) { setError("Query and cities required"); return; }
     setSearching(true);
     setError("");
 
-    const cityList = c.split(",").map(city => city.trim());
-    const newLeads: Lead[] = [];
-    const seenIds = new Set(leads.map(l => l.id));
-
+    const cityList = cities.split(",").map(c => c.trim());
     for (const city of cityList) {
-      setSearchLog(prev => [...prev, `Searching "${q}" in ${city}...`]);
+      setSearchLog(prev => [...prev, `Searching "${query}" in ${city}...`]);
+      const newLeads = await doSearch(query, city);
+      setLeads(prev => [...prev, ...newLeads]);
+      setSearchLog(prev => [...prev, `  Found ${newLeads.length} new places`]);
+    }
+    setSearching(false);
+  }, [query, cities, doSearch]);
 
-      try {
-        const res = await fetch("/api/scrape", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: q, city }),
-        });
+  // Deep search (multiple query variations)
+  const handleDeepSearch = useCallback(async () => {
+    if (!query || !cities) { setError("Query and cities required"); return; }
+    setDeepSearching(true);
+    setError("");
+    stopRef.current = false;
 
-        const data = await res.json();
+    const variations = QUERY_VARIATIONS[query.toLowerCase()] || [query, `${query} near me`, `best ${query}`, `local ${query}`];
+    const cityList = cities.split(",").map(c => c.trim());
+    const totalQueries = variations.length * cityList.length;
 
-        if (data.error) {
-          setSearchLog(prev => [...prev, `  Error: ${data.error}`]);
-          continue;
+    setDeepProgress({ done: 0, total: totalQueries, current: "" });
+    setSearchLog(prev => [...prev, `Deep Search: ${variations.length} variations x ${cityList.length} cities = ${totalQueries} queries`]);
+
+    let done = 0;
+    let totalNew = 0;
+
+    for (const v of variations) {
+      if (stopRef.current) break;
+      for (const city of cityList) {
+        if (stopRef.current) break;
+        setDeepProgress({ done, total: totalQueries, current: `"${v}" in ${city}` });
+        setSearchLog(prev => [...prev, `  "${v}" in ${city}...`]);
+
+        const newLeads = await doSearch(v, city);
+        if (newLeads.length > 0) {
+          setLeads(prev => [...prev, ...newLeads]);
+          totalNew += newLeads.length;
+          setSearchLog(prev => [...prev, `    +${newLeads.length} new`]);
         }
-
-        let added = 0;
-        for (const place of data.places || []) {
-          if (seenIds.has(place.id)) continue;
-          seenIds.add(place.id);
-          newLeads.push({
-            ...place,
-            email: "",
-            emailStatus: place.website ? "pending" : "not_found",
-            city,
-          });
-          added++;
-        }
-
-        setSearchLog(prev => [...prev, `  Found ${data.total} places, ${added} new`]);
-      } catch (err: any) {
-        setSearchLog(prev => [...prev, `  Error: ${err.message}`]);
+        done++;
+        setDeepProgress({ done, total: totalQueries, current: "" });
       }
     }
 
-    setLeads(prev => [...prev, ...newLeads]);
-    setSearching(false);
-    setSearchLog(prev => [...prev, `Done! ${newLeads.length} new leads added.`]);
-  }, [query, cities, leads]);
+    setDeepSearching(false);
+    setSearchLog(prev => [...prev, `Deep Search done! ${totalNew} total new leads.`]);
+  }, [query, cities, doSearch]);
 
-  // Run preset search
+  // Preset search
   const handlePreset = async (preset: typeof PRESET_SEARCHES[0]) => {
-    setSearchLog([`Running preset: ${preset.label}`]);
+    setSearching(true);
+    setSearchLog(prev => [...prev, `Preset: ${preset.label}`]);
     for (const q of preset.queries) {
-      await handleSearch(q.q, q.cities);
+      const cityList = q.cities.split(",").map(c => c.trim());
+      for (const city of cityList) {
+        setSearchLog(prev => [...prev, `  "${q.q}" in ${city}...`]);
+        const newLeads = await doSearch(q.q, city);
+        setLeads(prev => [...prev, ...newLeads]);
+        if (newLeads.length > 0) setSearchLog(prev => [...prev, `    +${newLeads.length} new`]);
+      }
     }
+    setSearching(false);
   };
 
-  // Enrich emails one by one
+  // Stop deep search
+  const handleStop = () => { stopRef.current = true; };
+
+  // Enrich emails
   const handleEnrichAll = useCallback(async () => {
     const toEnrich = leads.filter(l => l.emailStatus === "pending" && l.website);
     if (toEnrich.length === 0) return;
-
     setEnriching(true);
     setEnrichProgress({ done: 0, total: toEnrich.length });
 
     for (let i = 0; i < toEnrich.length; i++) {
       const lead = toEnrich[i];
-
-      setLeads(prev => prev.map(l =>
-        l.id === lead.id ? { ...l, emailStatus: "searching" } : l
-      ));
+      setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, emailStatus: "searching" } : l));
 
       try {
         const res = await fetch("/api/scrape/enrich", {
@@ -119,33 +167,24 @@ export default function LeadScraper() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ website: lead.website }),
         });
-
         const data = await res.json();
         const email = data.emails?.[0] || "";
-
-        setLeads(prev => prev.map(l =>
-          l.id === lead.id ? { ...l, email, emailStatus: email ? "found" : "not_found" } : l
-        ));
-      } catch (err) {
-        setLeads(prev => prev.map(l =>
-          l.id === lead.id ? { ...l, emailStatus: "not_found" } : l
-        ));
+        setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, email, emailStatus: email ? "found" : "not_found" } : l));
+      } catch {
+        setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, emailStatus: "not_found" } : l));
       }
-
       setEnrichProgress({ done: i + 1, total: toEnrich.length });
     }
-
     setEnriching(false);
   }, [leads]);
 
-  // Export to CSV
+  // Export CSV
   const handleExport = useCallback(() => {
     const validLeads = leads.filter(l => l.email || l.phone);
     const csv = "name,church,city,email,whatsapp\n" +
       validLeads.map(l =>
         `"Team ${l.name}","${l.name}","${l.city}","${l.email}","${l.phone.replace(/[\s\-()]/g, "")}"`
       ).join("\n");
-
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -155,11 +194,12 @@ export default function LeadScraper() {
     URL.revokeObjectURL(url);
   }, [leads]);
 
-  // Clear all
+  // Clear
   const handleClear = () => {
     setLeads([]);
     setSearchLog([]);
     setError("");
+    seenIdsRef.current.clear();
   };
 
   // Stats
@@ -172,64 +212,69 @@ export default function LeadScraper() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Lead Scraper</h1>
         <p className="text-sm text-gray-500 mt-1">Search churches and ministries worldwide, extract contact info, export to Campaign Manager</p>
       </div>
 
-      {/* Preset buttons */}
+      {/* Presets */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Quick Search</label>
         <div className="flex flex-wrap gap-2">
           {PRESET_SEARCHES.map((preset) => (
-            <button
-              key={preset.label}
-              onClick={() => handlePreset(preset)}
-              disabled={searching}
-              className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 disabled:opacity-50 transition"
-            >
+            <button key={preset.label} onClick={() => handlePreset(preset)} disabled={searching || deepSearching}
+              className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-200 disabled:opacity-50 transition">
               {preset.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Custom search */}
+      {/* Search form */}
       <div className="flex gap-3 items-end">
         <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700 mb-1">Search Query</label>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+          <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
             placeholder="church, gereja, prayer ministry..."
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          />
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
         </div>
         <div className="flex-1">
           <label className="block text-sm font-medium text-gray-700 mb-1">Cities (comma separated)</label>
-          <input
-            type="text"
-            value={cities}
-            onChange={(e) => setCities(e.target.value)}
-            placeholder="Jakarta, Surabaya, Lagos..."
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-          />
+          <input type="text" value={cities} onChange={(e) => setCities(e.target.value)}
+            placeholder="Jakarta, Singapore, Lagos..."
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
         </div>
-        <button
-          onClick={() => handleSearch()}
-          disabled={searching}
-          className="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 whitespace-nowrap"
-        >
+        <button onClick={handleSearch} disabled={searching || deepSearching}
+          className="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 whitespace-nowrap">
           {searching ? "Searching..." : "Search"}
         </button>
+        <button onClick={handleDeepSearch} disabled={searching || deepSearching}
+          className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap">
+          {deepSearching ? "Deep Searching..." : "Deep Search (50+)"}
+        </button>
+        {deepSearching && (
+          <button onClick={handleStop}
+            className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-600 whitespace-nowrap">
+            Stop
+          </button>
+        )}
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="bg-red-50 text-red-800 px-4 py-3 rounded-lg text-sm">{error}</div>
+      {/* Deep search progress */}
+      {deepSearching && (
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>{deepProgress.current}</span>
+            <span>{deepProgress.done}/{deepProgress.total} queries</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="bg-blue-500 h-2 rounded-full transition-all"
+              style={{ width: `${(deepProgress.done / (deepProgress.total || 1)) * 100}%` }} />
+          </div>
+        </div>
       )}
+
+      {error && <div className="bg-red-50 text-red-800 px-4 py-3 rounded-lg text-sm">{error}</div>}
 
       {/* Stats bar */}
       {leads.length > 0 && (
@@ -238,45 +283,32 @@ export default function LeadScraper() {
             <span className="text-gray-600">Total: <strong>{stats.total}</strong></span>
             <span className="text-emerald-600">Email: <strong>{stats.withEmail}</strong></span>
             <span className="text-blue-600">Phone: <strong>{stats.withPhone}</strong></span>
-            {stats.pending > 0 && (
-              <span className="text-amber-600">Pending email: <strong>{stats.pending}</strong></span>
-            )}
+            {stats.pending > 0 && <span className="text-amber-600">Pending email: <strong>{stats.pending}</strong></span>}
           </div>
           <div className="flex gap-2">
             {stats.pending > 0 && (
-              <button
-                onClick={handleEnrichAll}
-                disabled={enriching}
-                className="bg-amber-500 text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-amber-600 disabled:opacity-50"
-              >
-                {enriching
-                  ? `Enriching ${enrichProgress.done}/${enrichProgress.total}...`
-                  : `Find Emails (${stats.pending})`}
+              <button onClick={handleEnrichAll} disabled={enriching}
+                className="bg-amber-500 text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-amber-600 disabled:opacity-50">
+                {enriching ? `Enriching ${enrichProgress.done}/${enrichProgress.total}...` : `Find Emails (${stats.pending})`}
               </button>
             )}
-            <button
-              onClick={handleExport}
-              className="bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-700"
-            >
+            <button onClick={handleExport}
+              className="bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-emerald-700">
               Export CSV
             </button>
-            <button
-              onClick={handleClear}
-              className="bg-gray-200 text-gray-600 px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-300"
-            >
+            <button onClick={handleClear}
+              className="bg-gray-200 text-gray-600 px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-300">
               Clear
             </button>
           </div>
         </div>
       )}
 
-      {/* Enrich progress bar */}
+      {/* Enrich progress */}
       {enriching && (
         <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-amber-500 h-2 rounded-full transition-all"
-            style={{ width: `${(enrichProgress.done / enrichProgress.total) * 100}%` }}
-          />
+          <div className="bg-amber-500 h-2 rounded-full transition-all"
+            style={{ width: `${(enrichProgress.done / (enrichProgress.total || 1)) * 100}%` }} />
         </div>
       )}
 
@@ -304,22 +336,15 @@ export default function LeadScraper() {
                     <td className="px-3 py-1.5 text-gray-600">{lead.city}</td>
                     <td className="px-3 py-1.5 text-gray-600">{lead.phone || "-"}</td>
                     <td className="px-3 py-1.5">
-                      {lead.emailStatus === "searching" && (
-                        <span className="text-amber-500">searching...</span>
-                      )}
-                      {lead.emailStatus === "found" && (
-                        <span className="text-emerald-600">{lead.email}</span>
-                      )}
-                      {lead.emailStatus === "not_found" && (
-                        <span className="text-gray-400">-</span>
-                      )}
-                      {lead.emailStatus === "pending" && (
-                        <span className="text-gray-300">pending</span>
-                      )}
+                      {lead.emailStatus === "searching" && <span className="text-amber-500">searching...</span>}
+                      {lead.emailStatus === "found" && <span className="text-emerald-600">{lead.email}</span>}
+                      {lead.emailStatus === "not_found" && <span className="text-gray-400">-</span>}
+                      {lead.emailStatus === "pending" && <span className="text-gray-300">pending</span>}
                     </td>
                     <td className="px-3 py-1.5">
                       {lead.website ? (
-                        <a href={lead.website} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline truncate block max-w-[200px]">
+                        <a href={lead.website} target="_blank" rel="noopener noreferrer"
+                          className="text-blue-500 hover:underline truncate block max-w-[200px]">
                           {lead.website.replace(/https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
                         </a>
                       ) : "-"}
@@ -336,7 +361,7 @@ export default function LeadScraper() {
       )}
 
       {/* Empty state */}
-      {leads.length === 0 && !searching && (
+      {leads.length === 0 && !searching && !deepSearching && (
         <div className="text-center py-16 text-gray-400">
           <p className="text-4xl mb-3">🔍</p>
           <p>Search for churches or use a Quick Search preset above</p>
@@ -347,9 +372,7 @@ export default function LeadScraper() {
       {searchLog.length > 0 && (
         <details className="text-xs text-gray-400">
           <summary className="cursor-pointer hover:text-gray-600">Search log ({searchLog.length} entries)</summary>
-          <pre className="mt-2 p-3 bg-gray-50 rounded-lg overflow-auto max-h-40">
-            {searchLog.join("\n")}
-          </pre>
+          <pre className="mt-2 p-3 bg-gray-50 rounded-lg overflow-auto max-h-40">{searchLog.join("\n")}</pre>
         </details>
       )}
     </div>
