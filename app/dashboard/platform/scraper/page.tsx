@@ -1,5 +1,3 @@
-import LeadScraper from "@/components/LeadScraper";
-
 export default function ScraperPage() {
-  return <LeadScraper />;
+  return <h1>Scraper Test</h1>;
 }
