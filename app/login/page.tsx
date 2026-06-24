@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff, LogIn, AlertCircle, MessageSquare, Heart, Users, BarChart2, CheckCircle, Shield } from "lucide-react";
+import { Eye, EyeOff, LogIn, AlertCircle, MessageSquare, Heart, Users, BarChart2, CheckCircle, Shield, KeyRound, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const FEATURES = [
@@ -25,6 +25,8 @@ export default function LoginPage() {
   const [loading,  setLoading]  = useState(false);
   const [step,     setStep]     = useState<"login" | "welcome">("login");
   const [welName,  setWelName]  = useState("");
+  const [mode,     setMode]     = useState<"login" | "forgot">("login");
+  const [resetSent, setResetSent] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,6 +79,29 @@ export default function LoginPage() {
         setError("Network error. Check your internet connection.");
       else
         setError("Sign in failed. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (!email.trim()) { setError("Please enter your email address."); return; }
+    setLoading(true);
+    try {
+      const [{ sendPasswordResetEmail }, { auth }] = await Promise.all([
+        import("firebase/auth"),
+        import("@/lib/firebase"),
+      ]);
+      await sendPasswordResetEmail(auth, email.trim());
+      setResetSent(true);
+    } catch (err: any) {
+      const code = err?.code ?? "";
+      if (code === "auth/user-not-found") setError("No account found with this email.");
+      else if (code === "auth/invalid-email") setError("Please enter a valid email address.");
+      else if (code === "auth/too-many-requests") setError("Too many attempts. Please wait before trying again.");
+      else setError("Failed to send reset email. Please try again.");
+    } finally {
       setLoading(false);
     }
   };
@@ -164,11 +189,63 @@ export default function LoginPage() {
 
           {/* Heading */}
           <div className="mb-7">
-            <h2 className="text-xl lg:text-2xl font-bold text-foreground text-balance">Sign in to ReachTheSoul</h2>
-            <p className="text-sm text-muted-foreground mt-1.5">Enter your credentials to continue.</p>
+            <h2 className="text-xl lg:text-2xl font-bold text-foreground text-balance">
+              {mode === "forgot" ? "Reset your password" : "Sign in to ReachTheSoul"}
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1.5">
+              {mode === "forgot"
+                ? "Enter your email and we'll send you a reset link."
+                : "Enter your credentials to continue."}
+            </p>
           </div>
 
-          {/* Form */}
+          {mode === "forgot" ? (
+            /* Forgot password form */
+            resetSent ? (
+              <div className="text-center">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle size={20} className="text-primary" />
+                </div>
+                <p className="text-sm font-medium text-foreground mb-1">Check your email</p>
+                <p className="text-xs text-muted-foreground mb-6">
+                  We sent a password reset link to <span className="font-medium text-foreground">{email}</span>
+                </p>
+                <Button variant="outline" className="h-9 text-xs gap-2" onClick={() => { setMode("login"); setResetSent(false); setError(""); }}>
+                  <ArrowLeft size={12} /> Back to sign in
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1.5">Email address</label>
+                  <Input
+                    type="email" placeholder="you@church.org"
+                    value={email} onChange={(e) => setEmail(e.target.value)}
+                    required autoComplete="email" className="h-10 text-sm"
+                  />
+                </div>
+
+                {error && (
+                  <div className="flex items-start gap-2.5 p-3 rounded-lg bg-destructive/8 border border-destructive/20 text-xs text-destructive">
+                    <AlertCircle size={13} className="mt-0.5 shrink-0" />{error}
+                  </div>
+                )}
+
+                <Button type="submit" className="h-10 w-full font-semibold" disabled={loading}>
+                  {loading
+                    ? <span className="flex items-center gap-2"><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Sending...</span>
+                    : <span className="flex items-center gap-2"><KeyRound size={14} />Send reset link</span>
+                  }
+                </Button>
+
+                <button type="button" onClick={() => { setMode("login"); setError(""); }}
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5 mt-1">
+                  <ArrowLeft size={11} /> Back to sign in
+                </button>
+              </form>
+            )
+          ) : (
+          /* Login form */
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1.5">Email address</label>
@@ -179,7 +256,13 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-foreground mb-1.5">Password</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-foreground">Password</label>
+                <button type="button" onClick={() => { setMode("forgot"); setError(""); }}
+                  className="text-[11px] text-primary font-medium hover:underline">
+                  Forgot password?
+                </button>
+              </div>
               <div className="relative">
                 <Input
                   type={showPass ? "text" : "password"} placeholder="Enter your password"
@@ -206,6 +289,7 @@ export default function LoginPage() {
               }
             </Button>
           </form>
+          )}
 
           <p className="text-[11px] text-muted-foreground text-center mt-6 leading-relaxed">
             Don&apos;t have an account?{" "}
