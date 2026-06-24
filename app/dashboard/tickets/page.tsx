@@ -5,7 +5,7 @@ import {
   Filter, Search, ChevronRight, Download,
   CheckSquare, X, UserCheck, CheckCircle2, XCircle, Trash2,
   LayoutList, Columns, Bot, ShieldAlert, ChevronUp, ChevronDown as ChevronDownIcon,
-  Calendar, Globe,
+  Calendar, Globe, MessageCircle, Instagram, Facebook, Phone, Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,17 @@ const SOURCE_STYLE: Record<string, { color: string; bg: string }> = {
   event:     { color: "text-violet-700",  bg: "bg-violet-50 border-violet-200" },
   tiktok:    { color: "text-gray-700",    bg: "bg-gray-50 border-gray-200" },
   email:     { color: "text-cyan-700",    bg: "bg-cyan-50 border-cyan-200" },
+  call:      { color: "text-amber-700",   bg: "bg-amber-50 border-amber-200" },
+};
+
+// ── Channel display config ───────────────────────────────────────────────────
+const CHANNEL_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
+  facebook:        { label: "Facebook",  icon: <Facebook size={10} />,      color: "text-blue-700",    bg: "bg-blue-50 border-blue-200" },
+  instagram:       { label: "Instagram", icon: <Instagram size={10} />,     color: "text-pink-700",    bg: "bg-pink-50 border-pink-200" },
+  whatsapp_fonnte: { label: "WhatsApp",  icon: <MessageCircle size={10} />, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
+  whatsapp_meta:   { label: "WhatsApp",  icon: <MessageCircle size={10} />, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
+  email:           { label: "Email",     icon: <Mail size={10} />,          color: "text-cyan-700",    bg: "bg-cyan-50 border-cyan-200" },
+  call:            { label: "Call",      icon: <Phone size={10} />,         color: "text-amber-700",   bg: "bg-amber-50 border-amber-200" },
 };
 
 // ── Period helpers ────────────────────────────────────────────────────────────
@@ -78,6 +89,7 @@ export default function TicketsPage() {
   const [search, setSearch]               = useState("");
   const [statusFilter, setStatusFilter]   = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [programFilter, setProgramFilter] = useState<string>("all");
   const [period, setPeriod]               = useState<Period>("all");
   const [customFrom, setCustomFrom]       = useState("");
   const [customTo, setCustomTo]           = useState("");
@@ -94,6 +106,14 @@ export default function TicketsPage() {
   }, [firestoreTickets]);
 
   const agents = users.filter((u: any) => u.role === "agent" && u.isActive);
+
+  // Compute unique program names for filter dropdown
+  const programNames = useMemo(() => {
+    const names = new Set(
+      tickets.map((t) => (t as any).programName).filter(Boolean) as string[]
+    );
+    return Array.from(names).sort();
+  }, [tickets]);
 
   const getRespondentName = (id: string) =>
     respondents.find((r) => r.respondentId === id)?.fullName ?? "Unknown";
@@ -139,10 +159,11 @@ export default function TicketsPage() {
           (t.subject ?? "").toLowerCase().includes(search.toLowerCase());
         const matchStatus   = statusFilter   === "all" || t.status   === statusFilter;
         const matchPriority = priorityFilter === "all" || t.priority === priorityFilter;
+        const matchProgram  = programFilter  === "all" || (t as any).programName === programFilter;
         const matchPeriod   = !from || !to
           ? true
           : new Date(t.createdAt) >= from && new Date(t.createdAt) <= to;
-        return matchSearch && matchStatus && matchPriority && matchPeriod;
+        return matchSearch && matchStatus && matchPriority && matchProgram && matchPeriod;
       })
       .sort((a, b) => {
         let diff = 0;
@@ -153,7 +174,7 @@ export default function TicketsPage() {
         }
         return sortDir === "asc" ? diff : -diff;
       });
-  }, [tickets, search, statusFilter, priorityFilter, period, customFrom, customTo, sortKey, sortDir]);
+  }, [tickets, search, statusFilter, priorityFilter, programFilter, period, customFrom, customTo, sortKey, sortDir]);
 
   // ── Selection helpers ─────────────────────────────────────────────────────
   const allSelected   = filtered.length > 0 && filtered.every((t) => selected.has(t.ticketId));
@@ -195,12 +216,15 @@ export default function TicketsPage() {
 
   const exportCSV = () => {
     const rows = [
-      ["Ticket #", "Respondent", "Subject", "Status", "Priority", "Agent", "Date", "Time"],
+      ["Ticket #", "Respondent", "Subject", "Status", "Priority", "Channel", "Program", "Agent", "Date", "Time"],
       ...filtered.map((t) => {
         const d = new Date(t.createdAt);
+        const ch = (t as any).channel ?? "";
+        const chLabel = CHANNEL_CONFIG[ch]?.label ?? getSourceName(t) ?? ch;
+        const prog = (t as any).programName ?? "";
         return [
           t.ticketNumber, getRespondentName(t.respondentId), `"${t.subject}"`,
-          t.status, t.priority, t.assignedAgentName ?? "Unassigned",
+          t.status, t.priority, chLabel, prog, t.assignedAgentName ?? "Unassigned",
           d.toLocaleDateString("id-ID"), d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }),
         ];
       }),
@@ -302,6 +326,18 @@ export default function TicketsPage() {
                 <SelectItem value="low">Low</SelectItem>
               </SelectContent>
             </Select>
+            {/* Program filter */}
+            {programNames.length > 0 && (
+              <Select value={programFilter} onValueChange={setProgramFilter}>
+                <SelectTrigger className="h-8 w-40 text-xs"><SelectValue placeholder="Program" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Programs</SelectItem>
+                  {programNames.map((name) => (
+                    <SelectItem key={name} value={name}>{name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Row 2: period filter */}
@@ -404,7 +440,7 @@ export default function TicketsPage() {
                 <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Status</th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Priority</th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">
-                  <span className="flex items-center gap-1"><Globe size={10} />Source</span>
+                  <span className="flex items-center gap-1"><Globe size={10} />Channel</span>
                 </th>
                 <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Agent</th>
 
@@ -450,6 +486,9 @@ export default function TicketsPage() {
                 const createdDate = new Date(ticket.createdAt);
                 const lastMsg     = (ticket as any).lastMessage ?? "";
                 const lastMsgSender = (ticket as any).lastMessageSender ?? "";
+                const channel     = (ticket as any).channel as string ?? "";
+                const programName = (ticket as any).programName as string ?? "";
+                const chConfig    = CHANNEL_CONFIG[channel];
 
                 return (
                   <tr
@@ -507,18 +546,28 @@ export default function TicketsPage() {
                     {/* Priority */}
                     <td className="px-3 py-3"><TicketPriorityBadge priority={ticket.priority} /></td>
 
-                    {/* Source */}
+                    {/* Channel + Program */}
                     <td className="px-3 py-3">
-                      {(() => {
-                        const src = getSourceName(ticket);
-                        if (!src) return <span className="text-[10px] text-muted-foreground/40">—</span>;
-                        const style = SOURCE_STYLE[src.toLowerCase()] ?? { color: "text-slate-700", bg: "bg-slate-50 border-slate-200" };
-                        return (
-                          <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full border whitespace-nowrap", style.color, style.bg)}>
-                            {src}
+                      <div className="flex flex-col gap-1">
+                        {chConfig ? (
+                          <span className={cn("inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border whitespace-nowrap w-fit", chConfig.color, chConfig.bg)}>
+                            {chConfig.icon}
+                            {chConfig.label}
                           </span>
-                        );
-                      })()}
+                        ) : (
+                          (() => {
+                            const src = getSourceName(ticket);
+                            if (!src) return <span className="text-[10px] text-muted-foreground/40">—</span>;
+                            const style = SOURCE_STYLE[src.toLowerCase()] ?? { color: "text-slate-700", bg: "bg-slate-50 border-slate-200" };
+                            return <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full border whitespace-nowrap", style.color, style.bg)}>{src}</span>;
+                          })()
+                        )}
+                        {programName && (
+                          <span className="text-[9px] font-semibold text-primary/70 uppercase tracking-wide truncate max-w-[120px]">
+                            {programName}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Agent */}

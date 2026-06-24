@@ -709,3 +709,61 @@ export async function seedDefaultProgressSteps(orgId: string, createdBy: string)
     });
   }
 }
+// ---------------------------------------------------------------------------
+// SOCIAL ACCOUNTS (collection: social_accounts)
+// All queries scoped by orgId for multi-tenant isolation.
+// ---------------------------------------------------------------------------
+
+export async function fetchSocialAccounts(orgId: string) {
+  const [{ collection, getDocs, query, where, orderBy }, db] = await Promise.all([
+    import("firebase/firestore"),
+    getDb(),
+  ]);
+  const q = query(
+    collection(db, "social_accounts"),
+    where("orgId", "==", orgId),
+    orderBy("createdAt", "desc")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function addSocialAccount(
+  orgId: string,
+  data: Record<string, any>,
+  createdBy: string
+) {
+  const [{ collection, addDoc, serverTimestamp }, db] = await Promise.all([
+    import("firebase/firestore"),
+    getDb(),
+  ]);
+  return addDoc(collection(db, "social_accounts"), {
+    ...data,
+    orgId,
+    isActive: true,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    createdBy,
+  });
+}
+
+export async function updateSocialAccount(id: string, data: Record<string, any>) {
+  const [{ doc, updateDoc, serverTimestamp }, db] = await Promise.all([
+    import("firebase/firestore"),
+    getDb(),
+  ]);
+  const cleanData: Record<string, any> = { updatedAt: serverTimestamp() };
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) cleanData[key] = value;
+  }
+  return updateDoc(doc(db, "social_accounts", id), cleanData);
+}
+
+export async function deleteSocialAccount(id: string) {
+  const [{ doc, deleteDoc }, db] = await Promise.all([
+    import("firebase/firestore"),
+    getDb(),
+  ]);
+  return deleteDoc(doc(db, "social_accounts", id));
+}
+

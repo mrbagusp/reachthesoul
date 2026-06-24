@@ -12,7 +12,7 @@ import { useState, useEffect } from "react";
 import { PresenceDot } from "@/components/presence/PresenceDot";
 import { usePresenceStore } from "@/store/presence-store";
 import { useCallStore } from "@/store/call-store";
-
+import { Share2 } from "lucide-react";  // or Globe
 import { useOrgStore } from "@/store/org-store";
 import { useAuthStore } from "@/store/auth-store";
 import { OrgSwitcher } from "@/components/layout/OrgSwitcher";
@@ -45,6 +45,7 @@ const navItems: NavItem[] = [
       { label: "Outcomes", href: "/dashboard/admin/outcomes", icon: CheckCircle2 },
       { label: "Progress Steps", href: "/dashboard/admin/progress-steps", icon: ListOrdered },
       { label: "Integrations", href: "/dashboard/admin/integrations",    icon: Plug },
+      { label: "Social Accounts", href: "/dashboard/admin/social-accounts", icon: Share2 },
       { label: "Chat Widget",  href: "/dashboard/admin/widget",          icon: MessageSquare },
       { label: "AI Settings",  href: "/dashboard/admin/ai-settings",    icon: Bot },
       { label: "Call Settings", href: "/dashboard/admin/call-settings", icon: PhoneCall },

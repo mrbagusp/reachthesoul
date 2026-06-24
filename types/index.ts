@@ -143,6 +143,33 @@ export const DEFAULT_PROGRAM_SOURCES: string[] = [
   "Website", "WhatsApp", "Instagram", "Facebook", "YouTube", "Referral", "Event",
 ];
 
+// ─── SOCIAL ACCOUNTS (multi-account per channel) ───────────────────
+export type SocialPlatform =
+  | "whatsapp_fonnte"
+  | "whatsapp_meta"
+  | "facebook"
+  | "instagram"
+  | "email"
+  | "call";
+
+export interface SocialAccount {
+  id: string;
+  orgId: string;
+  platform: SocialPlatform;
+  programName: string;        // e.g. "Solusi", "Superyouth", "Main Account"
+  displayName: string;        // human-readable label
+  credentials: Record<string, any>;
+  aiSettings?: {
+    enabled?: boolean;
+    autoReply?: boolean;
+    systemPromptOverride?: string;
+  };
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
 export interface Respondent {
   respondentId:      string;
   orgId:             string;  // tenant identifier
@@ -192,6 +219,9 @@ export interface Ticket {
   handledBy?: HandledBy;
   escalation?: EscalationTrigger | null;
   aiMessageCount?: number;
+  // Multi-account
+  socialAccountId?: string;    // ID of social_accounts document
+  programName?: string;        // denormalized for fast list rendering
   // Outbound follow-up
   direction?:        TicketDirection;
   outboundChannel?:  OutboundChannel;
