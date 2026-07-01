@@ -26,7 +26,7 @@ export { onUserRegistered };
 export { onOnboardingComplete };
 
 // Campaign Engine (Lead Blaster)
-export { createCampaign, processCampaignQueue } from "./campaignEngine";
+export { createCampaign, processCampaignQueue, processCampaignQueueScheduled } from "./campaignEngine";
 
 // Set region to asia-southeast1 (Singapore) — closest to Indonesia
 setGlobalOptions({ region: "asia-southeast1" });

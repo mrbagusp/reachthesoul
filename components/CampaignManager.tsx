@@ -8,6 +8,11 @@ import {
   orderBy,
   onSnapshot,
   limit,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db, functions } from "@/lib/firebase";
 import Papa from "papaparse";
@@ -39,6 +44,14 @@ interface Campaign {
     signedUp: number;
   };
   createdAt: any;
+}
+
+interface CustomTemplate {
+  id: string;
+  label: string;
+  subject: string;
+  body: string;
+  createdAt?: any;
 }
 
 // ============================================================
@@ -179,14 +192,98 @@ export default function CampaignManager() {
   const [uploadError, setUploadError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  // ── Custom templates (stored in Firestore: email_templates) ──
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [newTemplateLabel, setNewTemplateLabel] = useState("");
+
+  // Combined list: built-in + custom
+  const allTemplates: Record<string, { label: string; subject: string; body: string; custom?: boolean }> = {
+    ...EMAIL_TEMPLATES,
+    ...Object.fromEntries(
+      customTemplates.map((t) => [t.id, { label: `⭐ ${t.label}`, subject: t.subject, body: t.body, custom: true }])
+    ),
+  };
+
   // Load template into editor
   useEffect(() => {
-    const tpl = EMAIL_TEMPLATES[selectedTemplate];
+    const tpl = allTemplates[selectedTemplate];
     if (tpl) {
       setCustomSubject(tpl.subject);
       setCustomBody(tpl.body);
     }
-  }, [selectedTemplate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTemplate, customTemplates]);
+
+  // Listen to custom templates real-time
+  useEffect(() => {
+    const q = query(collection(db, "email_templates"), orderBy("createdAt", "desc"));
+    const unsub = onSnapshot(q, (snap) => {
+      setCustomTemplates(snap.docs.map((d) => ({ id: d.id, ...d.data() } as CustomTemplate)));
+    });
+    return () => unsub();
+  }, []);
+
+  // Save current subject/body as a new custom template
+  const handleSaveTemplate = async () => {
+    if (!newTemplateLabel.trim()) { setUploadError("Beri nama template dulu."); return; }
+    if (!customSubject.trim() || !customBody.trim()) { setUploadError("Subject dan body tidak boleh kosong."); return; }
+    setSavingTemplate(true);
+    setUploadError("");
+    try {
+      await addDoc(collection(db, "email_templates"), {
+        label: newTemplateLabel.trim(),
+        subject: customSubject,
+        body: customBody,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      setNewTemplateLabel("");
+      setSuccessMsg("Template tersimpan ✓");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err: any) {
+      setUploadError("Gagal simpan template: " + (err?.message ?? "error"));
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  // Update an existing custom template with current editor content
+  const handleUpdateTemplate = async () => {
+    if (!editingTemplateId) return;
+    setSavingTemplate(true);
+    setUploadError("");
+    try {
+      await updateDoc(doc(db, "email_templates", editingTemplateId), {
+        subject: customSubject,
+        body: customBody,
+        ...(newTemplateLabel.trim() ? { label: newTemplateLabel.trim() } : {}),
+        updatedAt: serverTimestamp(),
+      });
+      setSuccessMsg("Template diperbarui ✓");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err: any) {
+      setUploadError("Gagal update template: " + (err?.message ?? "error"));
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  // Delete the selected custom template
+  const handleDeleteTemplate = async (id: string) => {
+    if (!confirm("Hapus template ini?")) return;
+    try {
+      await deleteDoc(doc(db, "email_templates", id));
+      setSelectedTemplate("id_problem"); // reset to a built-in
+      setSuccessMsg("Template dihapus ✓");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (err: any) {
+      setUploadError("Gagal hapus template: " + (err?.message ?? "error"));
+    }
+  };
+
+  const selectedIsCustom = allTemplates[selectedTemplate]?.custom === true;
 
   // Listen to campaigns real-time
   useEffect(() => {
@@ -405,15 +502,34 @@ export default function CampaignManager() {
 
           {/* Template selector */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email Template</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">Email Template</label>
+              {selectedIsCustom && (
+                <button
+                  onClick={() => handleDeleteTemplate(selectedTemplate)}
+                  className="text-xs text-red-500 hover:text-red-700 hover:underline"
+                >
+                  🗑 Hapus template ini
+                </button>
+              )}
+            </div>
             <select
               value={selectedTemplate}
-              onChange={(e) => setSelectedTemplate(e.target.value)}
+              onChange={(e) => { setSelectedTemplate(e.target.value); setEditingTemplateId(null); setNewTemplateLabel(""); }}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"
             >
-              {Object.entries(EMAIL_TEMPLATES).map(([key, tpl]) => (
-                <option key={key} value={key}>{tpl.label}</option>
-              ))}
+              <optgroup label="Template Bawaan">
+                {Object.entries(EMAIL_TEMPLATES).map(([key, tpl]) => (
+                  <option key={key} value={key}>{tpl.label}</option>
+                ))}
+              </optgroup>
+              {customTemplates.length > 0 && (
+                <optgroup label="Template Saya">
+                  {customTemplates.map((t) => (
+                    <option key={t.id} value={t.id}>⭐ {t.label}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
 
@@ -439,6 +555,41 @@ export default function CampaignManager() {
               rows={14}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-emerald-500"
             />
+          </div>
+
+          {/* Save / Update template */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+            <p className="text-xs font-medium text-gray-600">💾 Simpan sebagai template</p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newTemplateLabel}
+                onChange={(e) => setNewTemplateLabel(e.target.value)}
+                placeholder={selectedIsCustom ? "Nama baru (opsional untuk update)" : "Nama template baru, mis. 'Lead Batch Jkt'"}
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500"
+              />
+              <button
+                onClick={handleSaveTemplate}
+                disabled={savingTemplate}
+                className="bg-white border border-emerald-600 text-emerald-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-50 disabled:opacity-50 whitespace-nowrap"
+              >
+                {savingTemplate ? "..." : "+ Simpan Baru"}
+              </button>
+              {selectedIsCustom && (
+                <button
+                  onClick={() => { setEditingTemplateId(selectedTemplate); handleUpdateTemplate(); }}
+                  disabled={savingTemplate}
+                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {savingTemplate ? "..." : "✓ Update Ini"}
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-gray-400">
+              {selectedIsCustom
+                ? "\"Update Ini\" menyimpan perubahan subject/body ke template yang dipilih. \"Simpan Baru\" membuat template baru dari editor."
+                : "Edit subject & body di atas, beri nama, lalu simpan sebagai template baru untuk dipakai lagi."}
+            </p>
           </div>
 
           {/* Send */}
