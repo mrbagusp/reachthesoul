@@ -599,10 +599,10 @@ const BODY = `
         </div>
         <div>
           <h4>Resources</h4>
-          <a href="mailto:hello@reachthesoul.org">Contact Us</a>
-          <a href="mailto:hello@reachthesoul.org">Partner With Us</a>
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
+  <a href="mailto:hello@reachthesoul.org">Contact Us</a>
+  <a href="mailto:hello@reachthesoul.org">Partner With Us</a>
+  <a href="/privacy">Privacy Policy</a>
+  <a href="/terms">Terms of Service</a>
         </div>
       </div>
     </div>
