@@ -171,7 +171,7 @@ export default function PrivacyPolicyPage() {
           <br />
           Email: hello@reachthesoul.org {/* GANTI: pastikan inbox ini dipantau */}
           <br />
-          Address: Djava Residence C 2 / 16 North Cikarang <Indonesia></Indonesia>{/* GANTI: alamat surat terdaftar */}
+          Address: Djava Residence C 2 / 16 North Cikarang Indonesia{/* GANTI: alamat surat terdaftar */}
         </p>
 
         <h2>13. Changes to This Policy</h2>
