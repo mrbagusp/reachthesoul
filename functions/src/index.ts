@@ -73,8 +73,11 @@ async function fetchMetaUserProfile(
   if (!pageAccessToken || !psid) return fallback;
 
   try {
+    // For Instagram, request username too — IG often returns empty name for non-admin users.
+    // Use v21.0 (consistent with our other Graph API calls).
+    const fields = platform === "Instagram" ? "name,username" : "name";
     const response = await fetch(
-      `https://graph.facebook.com/v18.0/${psid}?fields=name&access_token=${pageAccessToken}`
+      `https://graph.facebook.com/v21.0/${psid}?fields=${fields}&access_token=${pageAccessToken}`
     );
     if (!response.ok) {
       logger.warn(`[fetchMetaUserProfile] Graph API ${response.status} for ${platform} PSID ${psid}`);
@@ -82,9 +85,16 @@ async function fetchMetaUserProfile(
     }
     const data: any = await response.json();
     const name = data?.name ?? "";
+    const username = data?.username ?? "";
+
     if (name.trim().length > 0) {
       logger.info(`[fetchMetaUserProfile] ${platform} PSID ${psid} → "${name}"`);
       return name.trim();
+    }
+    // Instagram fallback: use @username if name is empty
+    if (username.trim().length > 0) {
+      logger.info(`[fetchMetaUserProfile] ${platform} PSID ${psid} → "@${username}"`);
+      return `@${username.trim()}`;
     }
     return fallback;
   } catch (err) {

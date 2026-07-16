@@ -81,7 +81,7 @@ const getPlatformLabel = (platform: SocialPlatform) => {
 
 export default function SocialAccountsPage() {
   const orgId = useOrgStore((s) => s.activeOrg?.orgId);
-  const user = useAuthStore((s) => s.user);
+  const user = useAuthStore((s) => s.currentUser);
 
   const [accounts, setAccounts] = useState<SocialAccountRow[]>([]);
   const [loading, setLoading] = useState(true);
