@@ -14,6 +14,7 @@ import {
   getSocialAccountByFonnteDevice,
 } from "./social-accounts";
 import type { SocialAccountDoc } from "./social-accounts";
+import { verifyMetaSignature } from "./verify-signature";
 import * as admin from "firebase-admin";
 
 // Re-export scheduled function so Firebase deploys it
@@ -27,6 +28,9 @@ export { onOnboardingComplete };
 
 // Campaign Engine (Lead Blaster)
 export { createCampaign, processCampaignQueue, processCampaignQueueScheduled } from "./campaignEngine";
+
+// Facebook / Instagram OAuth "Connect" flow
+export { fbConnectStart, fbConnectCallback } from "./facebook-oauth";
 
 // Set region to asia-southeast1 (Singapore) — closest to Indonesia
 setGlobalOptions({ region: "asia-southeast1" });
@@ -228,7 +232,7 @@ export const onMessageCreated = onDocumentCreated(
 // 1. WhatsApp Business Cloud API (Meta)
 //    Lookup: entry[].changes[].value.metadata.phone_number_id → social_accounts
 // ────────────────────────────────────────────────────────────────────────────
-export const webhookWhatsapp = onRequest({ cors: true }, async (req, res) => {
+export const webhookWhatsapp = onRequest({ cors: true, secrets: ["META_APP_SECRET"] }, async (req, res) => {
   const WA_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? "rts_wa_token";
 
   if (req.method === "GET") {
@@ -241,6 +245,8 @@ export const webhookWhatsapp = onRequest({ cors: true }, async (req, res) => {
   }
 
   if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
+
+  if (!verifyMetaSignature(req)) { res.status(401).json({ error: "Invalid signature" }); return; }
 
   const orgId = req.query.org as string;
   if (!orgId) { res.status(400).json({ error: "Missing org parameter" }); return; }
@@ -394,7 +400,7 @@ async function parseFonnteAttachments(body: any): Promise<any[]> {
 //    Lookup: entry[].id (IG Business Account ID) → social_accounts
 //    NEW: Uses fetchMetaUserProfile for real sender names
 // ────────────────────────────────────────────────────────────────────────────
-export const webhookInstagram = onRequest({ cors: true }, async (req, res) => {
+export const webhookInstagram = onRequest({ cors: true, secrets: ["META_APP_SECRET"] }, async (req, res) => {
   const IG_VERIFY_TOKEN = process.env.INSTAGRAM_VERIFY_TOKEN ?? "rts_ig_token";
 
   if (req.method === "GET") {
@@ -407,6 +413,8 @@ export const webhookInstagram = onRequest({ cors: true }, async (req, res) => {
   }
 
   if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
+
+  if (!verifyMetaSignature(req)) { res.status(401).json({ error: "Invalid signature" }); return; }
 
   const orgId = req.query.org as string;
   if (!orgId) { res.status(400).json({ error: "Missing org parameter" }); return; }
@@ -461,7 +469,7 @@ export const webhookInstagram = onRequest({ cors: true }, async (req, res) => {
 //    Lookup: entry[].id (Page ID) → social_accounts
 //    NEW: Uses fetchMetaUserProfile for real sender names
 // ────────────────────────────────────────────────────────────────────────────
-export const webhookFacebook = onRequest({ cors: true }, async (req, res) => {
+export const webhookFacebook = onRequest({ cors: true, secrets: ["META_APP_SECRET"] }, async (req, res) => {
   const FB_VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN ?? "rts_fb_token";
 
   if (req.method === "GET") {
@@ -474,6 +482,8 @@ export const webhookFacebook = onRequest({ cors: true }, async (req, res) => {
   }
 
   if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
+
+  if (!verifyMetaSignature(req)) { res.status(401).json({ error: "Invalid signature" }); return; }
 
   const orgId = req.query.org as string;
   if (!orgId) { res.status(400).json({ error: "Missing org parameter" }); return; }

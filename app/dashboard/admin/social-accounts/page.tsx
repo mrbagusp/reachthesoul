@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOrgStore } from "@/store/org-store";
+import { ConnectMetaButton, MetaConnectResult } from "@/components/admin/ConnectMetaButton";
 import {
   fetchSocialAccounts,
   addSocialAccount,
@@ -233,10 +234,16 @@ export default function SocialAccountsPage() {
             Connect your WhatsApp, Facebook, Instagram accounts. Each account can have a unique program name for ticket tagging.
           </p>
         </div>
-        <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => { resetForm(); setShowForm(true); }}>
-          <Plus size={12} /> Add Account
-        </Button>
+        <div className="flex items-center gap-2">
+          <ConnectMetaButton />
+          <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => { resetForm(); setShowForm(true); }}>
+            <Plus size={12} /> Add Manual
+          </Button>
+        </div>
       </div>
+
+      {/* OAuth return status */}
+      <MetaConnectResult onSuccess={loadAccounts} />
 
       {/* Add / Edit Form */}
       {showForm && (
