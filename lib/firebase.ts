@@ -1,6 +1,11 @@
 // Firebase client SDK — client-side only, lazy initialized
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+import {
+  getAuth,
+  setPersistence,
+  browserLocalPersistence,
+  type Auth,
+} from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getFunctions, type Functions } from "firebase/functions";
 
@@ -30,6 +35,16 @@ export function getFirebaseApp(): FirebaseApp {
 export function getFirebaseAuth(): Auth {
   if (!_auth) {
     _auth = getAuth(getFirebaseApp());
+    // Force session to persist in localStorage — survives page reloads, tab
+    // close, and navigation. Without this, some environments (in-app browsers,
+    // restricted IndexedDB) fall back to in-memory persistence, which logs the
+    // user out the moment they navigate. Fire-and-forget: the promise resolves
+    // before any sign-in call that depends on it.
+    if (typeof window !== "undefined") {
+      setPersistence(_auth, browserLocalPersistence).catch((err) => {
+        console.warn("[firebase] Failed to set local persistence:", err);
+      });
+    }
   }
   return _auth;
 }

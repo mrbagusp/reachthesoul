@@ -304,6 +304,10 @@ export const fbConnectCallback = onRequest(
         const pageToken = String(page.access_token ?? "");
         if (!pageToken) continue;
 
+        // Debug: log what Graph API returned for this page's IG link
+        const igRaw = page.instagram_business_account;
+        logger.info(`[fbConnectCallback] page="${pageName}" (${pageId}) ig_raw=${JSON.stringify(igRaw ?? null)}`);
+
         // Subscribe Page to Messenger webhook
         try {
           await subscribeFacebookPage(pageId, pageToken);

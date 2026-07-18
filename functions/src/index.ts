@@ -73,9 +73,9 @@ async function fetchMetaUserProfile(
   if (!pageAccessToken || !psid) return fallback;
 
   try {
-    // For Instagram, request username too — IG often returns empty name for non-admin users.
-    // Use v21.0 (consistent with our other Graph API calls).
-    const fields = platform === "Instagram" ? "name,username" : "name";
+    // Messenger User Profile API only supports first_name/last_name (no "name" field);
+    // Instagram supports name + username. Wrong fields → HTTP 400.
+    const fields = platform === "Instagram" ? "name,username" : "first_name,last_name";
     const response = await fetch(
       `https://graph.facebook.com/v21.0/${psid}?fields=${fields}&access_token=${pageAccessToken}`
     );
@@ -84,7 +84,9 @@ async function fetchMetaUserProfile(
       return fallback;
     }
     const data: any = await response.json();
-    const name = data?.name ?? "";
+    const name = platform === "Instagram"
+      ? (data?.name ?? "")
+      : [data?.first_name, data?.last_name].filter(Boolean).join(" ");
     const username = data?.username ?? "";
 
     if (name.trim().length > 0) {
