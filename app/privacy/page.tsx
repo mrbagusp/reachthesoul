@@ -1,185 +1,110 @@
-// app/privacy/page.tsx
-// Renders at reachthesoul.org/privacy
-// Reflects actual stack: Vercel + Firestore + third-party AI (OpenAI/Anthropic).
-// Replace every {/* GANTI: ... */} placeholder before publishing. Template, not legal advice.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — ReachTheSoul</title>
+<meta name="description" content="Privacy Policy for ReachTheSoul, operated by Blessing Media Global. How we collect, use, store, and delete data.">
+<style>
+  :root{--bg:#0f1b2d;--ink:#1c2733;--muted:#5b6b7d;--line:#e4e9ef;--accent:#2f6df6;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:var(--ink);line-height:1.65;background:#fff;}
+  .wrap{max-width:760px;margin:0 auto;padding:48px 22px 80px;}
+  h1{font-size:30px;margin:0 0 6px;}
+  h2{font-size:20px;margin:34px 0 10px;padding-top:6px;}
+  .updated{color:var(--muted);font-size:14px;margin-bottom:26px;}
+  p,li{font-size:16px;}
+  a{color:var(--accent);}
+  .note{background:#fff8e6;border:1px solid #f0e0a8;border-radius:10px;padding:14px 16px;font-size:15px;color:#6a5a1f;margin:20px 0;}
+  hr{border:none;border-top:1px solid var(--line);margin:30px 0;}
+  .addr{color:var(--muted);font-size:15px;}
+  footer{background:var(--bg);color:#c7d2e0;padding:30px 20px;text-align:center;font-size:14px;}
+  footer a{color:#c7d2e0;text-decoration:none;margin:0 9px;}
+  footer .pb{border-top:1px solid #22344c;margin-top:14px;padding-top:14px;color:#7f93a8;font-size:13px;}
+  footer strong{color:#c7d2e0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Privacy Policy</h1>
+  <div class="updated">Last updated: <span id="d"></span></div>
 
-import type { Metadata } from "next";
+  <p>ReachTheSoul ("RTS", "we", "us", "our") is a response and follow-up platform that helps Christian ministries receive and respond to prayer requests, spiritual questions, counseling needs, and decisions of faith. ReachTheSoul is owned and operated by <strong>Blessing Media Global</strong>, a legally registered entity in Indonesia ("the data controller").</p>
 
-export const metadata: Metadata = {
-  title: "Privacy Policy | ReachTheSoul",
-  description:
-    "How ReachTheSoul collects, uses, processes, and protects the personal and prayer-related information entrusted to us.",
-};
+  <p>This policy explains what information we collect, why, how we protect it, where it is stored, and the choices you have. Because many people contact ministries during vulnerable moments, we treat the messages we handle with particular care.</p>
 
-export default function PrivacyPolicyPage() {
-  return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
-      <header className="mb-10 border-b border-gray-200 pb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Privacy Policy</h1>
-        <p className="mt-2 text-sm italic text-gray-500">Effective Date: July 7, 2026</p>
-      </header>
+  <div class="note">This policy reflects our current practices and is provided for transparency. It is not legal advice.</div>
 
-      <div className="prose prose-gray max-w-none prose-headings:font-semibold prose-headings:text-gray-900 prose-a:text-indigo-600">
-        <h2>1. Introduction</h2>
-        <p>
-          ReachTheSoul (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;) operates the ReachTheSoul
-          platform, which provides prayer support and soul-care tools for churches, ministries, and
-          individuals (the &quot;Service&quot;). We take the privacy of the deeply personal
-          information entrusted to us seriously. This Privacy Policy explains what information we
-          collect, how we use it, how it is processed and protected, and the choices you have.
-        </p>
-        {/* GANTI: konfirmasi nama entitas legal & negara pendaftaran */}
+  <h2>1. Who we are</h2>
+  <p>
+    <strong>Product:</strong> ReachTheSoul (reachthesoul.org)<br>
+    <strong>Operated by:</strong> Blessing Media Global<br>
+    <strong>Registered address:</strong> D Java Residence Blok C2 No. 16, Kabupaten Bekasi, Jawa Barat 17836, Indonesia<br>
+    <strong>Contact:</strong> <a href="mailto:privacy@reachthesoul.org">privacy@reachthesoul.org</a>
+  </p>
+  <p>Ministries that use RTS to manage their own audiences are <strong>independent controllers</strong> of the messages their audiences send them. For that content, RTS acts as a <strong>processor</strong> on the ministry's behalf.</p>
 
-        <h2>2. Information We Collect</h2>
-        <h3>2.1 Information You Provide</h3>
-        <ul>
-          <li>Account information: name, email address, church or organization name, and password.</li>
-          <li>
-            Prayer and care content: prayer requests, notes, reflections, and counseling-related
-            messages you or your respondents submit.
-          </li>
-          <li>
-            Respondent information: when your organization interacts with people seeking prayer or
-            care, their names, contact details, and message content may be stored.
-          </li>
-          <li>Communications: messages you send to us for support or feedback.</li>
-        </ul>
-        {/* GANTI: prayer/counseling content bisa jadi "special category data" (GDPR).
-            Konfirmasi lawful basis / consent dengan pengacara. */}
-        <h3>2.2 Information Collected Automatically</h3>
-        <ul>
-          <li>Usage data: pages visited, features used, and time spent on the Service.</li>
-          <li>Device and log data: IP address, browser type, and device identifiers.</li>
-          <li>Cookies and similar technologies (see Section 8).</li>
-        </ul>
+  <h2>2. Information we collect</h2>
+  <p><strong>a) Message and conversation data.</strong> When someone contacts a ministry through a connected channel (e.g. Facebook Messenger, Instagram Direct, WhatsApp), we receive and process the content of those messages, which may include prayer requests, personal circumstances, and spiritual or emotional disclosures.</p>
+  <p><strong>b) Sender profile data.</strong> Basic profile information provided by the messaging platform, such as name, profile picture, and a platform user ID, used to identify and respond to the person.</p>
+  <p><strong>c) Ministry account data.</strong> Information about ministry users of RTS: name, email, organization, connected pages/accounts, and access tokens needed to send and receive messages on the ministry's behalf.</p>
+  <p><strong>d) Technical data.</strong> Standard log data such as timestamps and system events needed to operate and secure the service.</p>
+  <p>We do <strong>not</strong> seek to collect more than is necessary to route and respond to messages.</p>
 
-        <h2>3. How We Use Your Information</h2>
-        <p>We use the information we collect to:</p>
-        <ul>
-          <li>Provide, operate, and maintain the Service.</li>
-          <li>Generate AI-assisted first responses to incoming prayer and care messages.</li>
-          <li>
-            Detect messages that may indicate crisis or self-harm, so they can be escalated to your
-            human team.
-          </li>
-          <li>Communicate with you about your account and updates.</li>
-          <li>Improve and secure the Service.</li>
-          <li>Comply with legal obligations.</li>
-        </ul>
+  <h2>3. How we use information</h2>
+  <p>We use the information to deliver incoming messages to the right ministry responders; enable timely, structured follow-up so no request is missed; provide an initial automated acknowledgement and route or prioritize messages (including flagging urgent situations for faster human attention); and maintain, secure, and improve the service.</p>
+  <p>We do <strong>not</strong> sell personal data, and we do <strong>not</strong> use message content for advertising.</p>
 
-        <h2>4. AI Processing and Third-Party Sub-Processors</h2>
-        <p>
-          The Service uses artificial intelligence to generate initial responses to prayer and
-          counseling messages and to help detect messages that may need urgent human attention. To
-          do this, the content of messages is sent to third-party AI providers (for example, OpenAI
-          and/or Anthropic) that process the content on our behalf to generate a response.
-        </p>
-        <p>
-          These AI providers act as our sub-processors. We do not use your prayer or counseling
-          content to train our own AI models, and we rely on providers whose terms restrict the use
-          of submitted content for training their models. We will not use your content to train AI
-          models without first updating this Policy and, where required, obtaining your consent.
-        </p>
-        {/* GANTI/VERIFY: sebutkan penyedia AI persis yang dipakai. Pastikan pakai API settings
-            yang tidak memakai data untuk training. Pertimbangkan menandatangani DPA dengan tiap penyedia. */}
+  <h2>4. Automated processing and human care</h2>
+  <p>RTS may use automated tools to acknowledge messages instantly and to help categorize and prioritize them (for example, distinguishing a general prayer request from an urgent situation). Automated responses are a first step only. The substantive spiritual and counseling care is provided by human responders from the ministry.</p>
+  <p><strong>RTS is not an emergency or crisis service.</strong> If someone is in immediate danger, they should contact local emergency services or a crisis hotline. Where a message indicates a possible crisis, our system is designed to encourage the person toward immediate help and to prioritize the message for human follow-up.</p>
 
-        <h2>5. How We Share Your Information</h2>
-        <p>
-          We do not sell your personal information. We share information only in these limited
-          circumstances:
-        </p>
-        <ul>
-          <li>
-            With infrastructure and service providers that operate the Service — including Vercel
-            (hosting), Google Firestore (database), and the AI providers described in Section 4 —
-            under confidentiality and data-processing obligations.
-          </li>
-          <li>
-            With messaging platforms you connect (such as WhatsApp, Instagram, Facebook, or TikTok),
-            solely to send and receive the messages you route through them.
-          </li>
-          <li>
-            With your church or organization administrator, where you interact with the Service
-            through them and per their configured settings.
-          </li>
-          <li>
-            When required by law, or to protect the rights, safety, and security of users and the
-            public.
-          </li>
-          <li>
-            In connection with a merger, acquisition, or sale of assets, with notice to you.
-          </li>
-        </ul>
-        {/* GANTI: perjelas apakah church admin bisa membaca prayer request pribadi anggota. */}
+  <h2>5. How we share information</h2>
+  <p>We share information only as needed to operate the service: with the ministry the person contacted (their responders); with service providers/processors that power messaging channels and infrastructure — for example Meta (Facebook/Instagram), our WhatsApp provider, and Google Firebase/Firestore (hosting and database); and when legally required, to comply with applicable law or valid legal process.</p>
+  <p>Where a third-party processor is in the data path, we require appropriate safeguards and confidentiality.</p>
 
-        <h2>6. Data Isolation</h2>
-        <p>
-          Each organization&apos;s data is logically isolated so that one church or ministry cannot
-          access another organization&apos;s data. Access is controlled through authentication and
-          access rules.
-        </p>
-        {/* GANTI/VERIFY: pastikan Firestore Security Rules benar-benar menegakkan isolasi per-organisasi. Uji ini. */}
+  <h2>6. Data storage, location, and security</h2>
+  <p>Message and account data are stored in <strong>Google Firebase / Firestore</strong>, in the <strong>Singapore</strong> region. Data is encrypted in transit and at rest (as provided by Google Cloud infrastructure). Access is restricted to authorized ministry responders and authorized RTS personnel. We apply reasonable technical and organizational measures to protect the data.</p>
+  <p>Because RTS operates across countries, data submitted by users in various locations is stored on servers located in Singapore. By using the service, users understand that their data will be processed and stored there.</p>
 
-        <h2>7. Data Security</h2>
-        <p>
-          We rely on industry-standard infrastructure to protect your information. Data is encrypted
-          in transit (via HTTPS) and encrypted at rest by our database provider. We restrict
-          internal access to personal information to those who need it to operate the Service.
-        </p>
-        <p>
-          Please note that no method of transmission or storage is completely secure. While our
-          infrastructure encrypts stored data, authorized personnel with administrative access may
-          be able to view content in order to operate and support the Service. We do not provide
-          end-to-end encryption, and you should not assume that submitted content is invisible to
-          all staff.
-        </p>
+  <h2>7. Data retention</h2>
+  <p>We retain message and account data for as long as a ministry maintains an active account with RTS, in order to provide care and follow-up.</p>
+  <p><strong>When a ministry stops using the service (cancels or terminates their account), we retain their data for one (1) month, after which it is permanently deleted from our systems.</strong> This one-month window allows for reactivation, data export, or resolution of any outstanding matters before deletion.</p>
+  <p>A person may also request deletion of their own data at any time — see Section 8 and our <a href="/data-deletion">Data Deletion</a> page.</p>
 
-        <h2>8. Cookies</h2>
-        <p>
-          We use cookies and similar technologies to operate the Service, remember your preferences,
-          and understand usage. You can control cookies through your browser settings.
-        </p>
+  <h2>8. Your rights and choices</h2>
+  <p>Depending on your location, you may have the right to access, correct, or delete your personal data, or to object to or restrict certain processing. To make a request about your own messages, contact the ministry you reached out to, or contact us at <a href="mailto:privacy@reachthesoul.org">privacy@reachthesoul.org</a> and we will assist or route your request. To request deletion of data, see our <a href="/data-deletion">Data Deletion</a> page. We will respond to requests within the time required by applicable law.</p>
 
-        <h2>9. Data Retention</h2>
-        <p>
-          We retain your information for as long as your account is active or as needed to provide
-          the Service, then delete or anonymize it, unless a longer retention period is required by
-          law.
-        </p>
-        {/* GANTI: sebutkan periode retensi konkret. */}
+  <h2>9. Platform-specific note (Meta)</h2>
+  <p>When a ministry connects a Facebook Page or Instagram account, they authorize RTS to receive and respond to messages on their behalf using Meta's official APIs. RTS uses the permissions granted only to provide the messaging and follow-up features described here, in accordance with Meta's Platform Terms and Developer Policies. Access tokens are stored securely and used only for these purposes.</p>
 
-        <h2>10. Your Rights and Choices</h2>
-        <p>
-          Depending on your location, you may have the right to access, correct, delete, or export
-          your personal information, and to withdraw consent. To exercise these rights, contact us at
-          the address in Section 12.
-        </p>
-        {/* GANTI: jika ada pengguna EU/UK (GDPR) atau California (CCPA), rinci hak & timeline. */}
+  <h2>10. Children</h2>
+  <p>RTS is intended to be used by ministries and adults. We do not knowingly seek personal data from children. If you believe a child's data has been shared with us, contact us so we can address it appropriately.</p>
 
-        <h2>11. Children&apos;s Privacy</h2>
-        <p>
-          The Service is not directed to children under 13 (or the minimum age required in your
-          jurisdiction), and we do not knowingly collect their personal information without
-          verifiable parental consent.
-        </p>
-        {/* GANTI: jika youth ministry jadi use case, perlu alur parental consent & COPPA. */}
+  <h2>11. Changes to this policy</h2>
+  <p>We may update this policy from time to time. Material changes will be reflected by updating the "Last updated" date and, where appropriate, providing additional notice.</p>
 
-        <h2>12. Contact Us</h2>
-        <p>If you have questions about this Privacy Policy or your information, contact us at:</p>
-        <p>
-          ReachTheSoul
-          <br />
-          Email: hello@reachthesoul.org {/* GANTI: pastikan inbox ini dipantau */}
-          <br />
-          Address: Djava Residence C 2 / 16 North Cikarang Indonesia{/* GANTI: alamat surat terdaftar */}
-        </p>
+  <h2>12. Contact</h2>
+  <p class="addr"><strong>Blessing Media Global</strong> (operator of ReachTheSoul)<br>
+  D Java Residence Blok C2 No. 16, Kabupaten Bekasi, Jawa Barat 17836, Indonesia<br>
+  Email: <a href="mailto:privacy@reachthesoul.org">privacy@reachthesoul.org</a></p>
+</div>
 
-        <h2>13. Changes to This Policy</h2>
-        <p>
-          We may update this Privacy Policy from time to time. We will post the updated version with
-          a new effective date and, where appropriate, notify you.
-        </p>
-      </div>
-    </main>
-  );
-}
+<footer>
+  <div>
+    <a href="/about">About</a>
+    <a href="/privacy">Privacy Policy</a>
+    <a href="/data-deletion">Data Deletion</a>
+    <a href="/contact">Contact</a>
+  </div>
+  <div class="pb">Powered by <strong>Blessing Media Global</strong><br>
+  &copy; <span id="y"></span> Blessing Media Global. All rights reserved.</div>
+</footer>
+
+<script>
+  var now=new Date();
+  document.getElementById('y').textContent=now.getFullYear();
+  document.getElementById('d').textContent=now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+</script>
+</body>
+</html>

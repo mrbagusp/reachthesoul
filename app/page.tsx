@@ -599,15 +599,17 @@ const BODY = `
         </div>
         <div>
           <h4>Resources</h4>
-  <a href="mailto:hello@reachthesoul.org">Contact Us</a>
-  <a href="mailto:hello@reachthesoul.org">Partner With Us</a>
-  <a href="/privacy">Privacy Policy</a>
-  <a href="/terms">Terms of Service</a>
+          <a href="mailto:hello@reachthesoul.org">Contact Us</a>
+          <a href="mailto:hello@reachthesoul.org">Partner With Us</a>
+          <a href="/privacy">Privacy Policy</a>
+          <a href="/data-deletion">Data Deletion</a>
+          <a href="/terms">Terms of Service</a>
         </div>
       </div>
     </div>
     <div class="footer-bottom">
       <p>&copy; 2026 ReachTheSoul. Where every soul finds care.</p>
+      <p style="margin-top:6px;">Powered by <strong style="color:var(--gray-300);font-weight:600;">Blessing Media Global</strong></p>
     </div>
   </div>
 </footer>
