@@ -26,7 +26,10 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   currentUser: null,
   role: null,
-  isLoading: false,
+  // Start TRUE: on first render, before onAuthStateChanged has restored the
+  // session from localStorage, we must NOT let the dashboard redirect guard
+  // conclude the user is logged out. It flips to false only after auth resolves.
+  isLoading: true,
 
   setUser: (user) =>
     set({ currentUser: user, role: user?.role ?? null, isLoading: false }),

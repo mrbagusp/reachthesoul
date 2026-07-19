@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,24 @@ export default function LoginPage() {
   const router  = useRouter();
   const setUser = useAuthStore((s) => s.setUser);
 
+  // If the user already has a live Firebase session, don't show the login form —
+  // send them straight to the dashboard. This is why reopening reachthesoul.org
+  // felt like being logged out: the session was alive, the page just didn't check.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [{ onAuthStateChanged }, { auth }] = await Promise.all([
+        import("firebase/auth"),
+        import("@/lib/firebase"),
+      ]);
+      const unsub = onAuthStateChanged(auth, (u) => {
+        if (!cancelled && u) router.replace("/dashboard");
+      });
+      return () => unsub();
+    })();
+    return () => { cancelled = true; };
+  }, [router]);
+
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -34,11 +52,14 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const [{ signInWithEmailAndPassword }, { doc, getDoc }, { auth, db }] = await Promise.all([
+      const [{ signInWithEmailAndPassword, setPersistence, browserLocalPersistence }, { doc, getDoc }, { auth, db }] = await Promise.all([
         import("firebase/auth"),
         import("firebase/firestore"),
         import("@/lib/firebase"),
       ]);
+      // Guarantee the session is stored in localStorage before signing in, so it
+      // survives page navigation / tab close. Awaited so it's set before auth state changes.
+      await setPersistence(auth, browserLocalPersistence);
       const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
       const snap       = await getDoc(doc(db, "users", credential.user.uid));
 
@@ -251,6 +272,7 @@ export default function LoginPage() {
               <label className="block text-xs font-semibold text-foreground mb-1.5">Email address</label>
               <Input
                 type="email" placeholder="you@church.org"
+                name="email" id="email"
                 value={email} onChange={(e) => setEmail(e.target.value)}
                 required autoComplete="email" className="h-10 text-sm"
               />
@@ -266,6 +288,7 @@ export default function LoginPage() {
               <div className="relative">
                 <Input
                   type={showPass ? "text" : "password"} placeholder="Enter your password"
+                  name="password" id="current-password"
                   value={password} onChange={(e) => setPassword(e.target.value)}
                   required autoComplete="current-password" className="h-10 text-sm pr-10"
                 />
