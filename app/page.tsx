@@ -99,6 +99,18 @@ const STYLES = `
     .hero-stat .label { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 4px; }
     @media (max-width: 640px) { .hero-stats { gap: 24px; } .hero-stat .num { font-size: 28px; } }
 
+    /* ── CHANNELS STRIP ── */
+    .channels { background: var(--navy); padding: 40px 0 48px; border-top: 1px solid rgba(255,255,255,0.06); }
+    .channels-label { text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 28px; }
+    .channels-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; max-width: 900px; margin: 0 auto; }
+    .channel-chip { display: inline-flex; align-items: center; gap: 9px; padding: 11px 18px; border-radius: 100px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 600; transition: all 0.2s; }
+    .channel-chip:hover { background: rgba(45,212,191,0.12); border-color: rgba(45,212,191,0.35); transform: translateY(-2px); }
+    .channel-chip svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .channel-chip .soon { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: var(--navy); background: var(--gold); padding: 2px 6px; border-radius: 5px; margin-left: 2px; }
+    .channels-builtfor { text-align: center; font-size: 14px; color: rgba(255,255,255,0.55); max-width: 640px; margin: 28px auto 0; line-height: 1.6; }
+    .channels-builtfor strong { color: rgba(255,255,255,0.8); font-weight: 600; }
+    @media (max-width: 640px) { .channel-chip { font-size: 13px; padding: 9px 14px; } .channels-grid { gap: 10px; } }
+
     /* ── PAIN SECTION ── */
     .pain { padding: 100px 0; background: var(--off-white); }
     .pain-header { text-align: center; max-width: 640px; margin: 0 auto 60px; }
@@ -284,6 +296,46 @@ const BODY = `
       <div class="hero-stat"><div class="num">&lt; 1 min</div><div class="label">AI Response Time</div></div>
       <div class="hero-stat"><div class="num">100%</div><div class="label">Follow-up Rate</div></div>
     </div>
+  </div>
+</section>
+
+<!-- CHANNELS SUPPORTED -->
+<section class="channels">
+  <div class="container">
+    <p class="channels-label">One inbox for every channel</p>
+    <div class="channels-grid">
+      <div class="channel-chip">
+        <svg viewBox="0 0 24 24" fill="#25D366"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.7 1-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.2-.5.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.8 1.2 3c.1.2 2.1 3.2 5.1 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 00-8.5 15.3L2 22l4.8-1.5A10 10 0 1012 2z"/></svg>
+        WhatsApp
+      </div>
+      <div class="channel-chip">
+        <svg viewBox="0 0 24 24" fill="#0084FF"><path d="M12 2C6.5 2 2 6.1 2 11.2c0 2.9 1.4 5.5 3.7 7.2V22l3.4-1.9c.9.3 1.9.4 2.9.4 5.5 0 10-4.1 10-9.2S17.5 2 12 2zm1 12.4l-2.5-2.7-4.9 2.7 5.4-5.7 2.6 2.7 4.8-2.7-5.4 5.7z"/></svg>
+        Facebook DM
+      </div>
+      <div class="channel-chip">
+        <svg viewBox="0 0 24 24"><defs><radialGradient id="ig" cx="30%" cy="107%" r="150%"><stop offset="0%" stop-color="#fdf497"/><stop offset="5%" stop-color="#fdf497"/><stop offset="45%" stop-color="#fd5949"/><stop offset="60%" stop-color="#d6249f"/><stop offset="90%" stop-color="#285AEB"/></radialGradient></defs><path fill="url(#ig)" d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.3 2.2.4.6.2 1 .4 1.4.8.4.4.6.8.8 1.4.2.4.4 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.3 1.8-.4 2.2-.2.6-.4 1-.8 1.4-.4.4-.8.6-1.4.8-.4.2-1 .4-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.3-2.2-.4-.6-.2-1-.4-1.4-.8-.4-.4-.6-.8-.8-1.4-.2-.4-.4-1-.4-2.2-.1-1.3-.1-1.7-.1-4.9s0-3.6.1-4.9c.1-1.2.3-1.8.4-2.2.2-.6.4-1 .8-1.4.4-.4.8-.6 1.4-.8.4-.2 1-.4 2.2-.4 1.3-.1 1.7-.1 4.9-.1zm0 3.2A6.6 6.6 0 1012 18.6 6.6 6.6 0 0012 5.4zm0 10.9a4.3 4.3 0 110-8.6 4.3 4.3 0 010 8.6zm6.9-11.1a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/></svg>
+        Instagram DM
+      </div>
+      <div class="channel-chip">
+        <svg viewBox="0 0 24 24" fill="#000000"><path d="M12.2 2c2.5 0 4.5.9 5.8 2.5 1.2 1.5 1.8 3.6 1.9 6.2h-2.3c-.1-2-.5-3.4-1.2-4.4-.8-1-2-1.5-3.7-1.5-1.8 0-3.1.6-4 1.7-.8 1.1-1.3 2.7-1.3 4.9s.5 3.8 1.3 4.9c.9 1.1 2.2 1.7 4 1.7 1.5 0 2.6-.4 3.4-1.1.5-.5.9-1.1 1.1-2 .4.3.9.6 1.5.9-.3 1.1-.9 2-1.6 2.7-1.2 1.1-2.8 1.6-4.8 1.6-2.5 0-4.5-.9-5.8-2.5C5 16.6 4.4 14.5 4.4 12s.6-4.6 1.9-6.2C7.6 3.4 9.6 2.5 12.2 2z"/></svg>
+        Threads DM
+        <span class="soon">SOON</span>
+      </div>
+      <div class="channel-chip">
+        <svg viewBox="0 0 24 24" fill="#2DD4BF"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.8 21 3 13.2 3 3.5 3 2.9 3.4 2.5 4 2.5h3.5c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.3 0 .7-.2 1l-2.3 2.8z"/></svg>
+        Voice Call
+      </div>
+      <div class="channel-chip">
+        <svg viewBox="0 0 24 24" fill="#F59E0B"><path d="M3 5c0-.6.4-1 1-1h16c.6 0 1 .4 1 1v14c0 .6-.4 1-1 1H4c-.6 0-1-.4-1-1V5zm2 1.4V18h14V6.4l-7 4.7-7-4.7zm.9-1.4l6.1 4.1L18.1 5H5.9z"/></svg>
+        Email
+        <span class="soon">SOON</span>
+      </div>
+      <div class="channel-chip">
+        <svg viewBox="0 0 24 24" fill="#243B5C"><path d="M4 4h16c.6 0 1 .4 1 1v11c0 .6-.4 1-1 1H8l-4 4V5c0-.6.4-1 1-1zm3 5v2h10V9H7zm0 3.5V14h7v-1.5H7z"/></svg>
+        Live Chat
+      </div>
+    </div>
+    <p class="channels-builtfor">Built for churches, media ministries, mission organizations, campus ministries, and non-profits — and ministries like yours.</p>
   </div>
 </section>
 
@@ -599,17 +651,15 @@ const BODY = `
         </div>
         <div>
           <h4>Resources</h4>
-          <a href="mailto:hello@reachthesoul.org">Contact Us</a>
-          <a href="mailto:hello@reachthesoul.org">Partner With Us</a>
-          <a href="/privacy">Privacy Policy</a>
-          <a href="/data-deletion">Data Deletion</a>
-          <a href="/terms">Terms of Service</a>
+  <a href="mailto:hello@reachthesoul.org">Contact Us</a>
+  <a href="mailto:hello@reachthesoul.org">Partner With Us</a>
+  <a href="/privacy">Privacy Policy</a>
+  <a href="/terms">Terms of Service</a>
         </div>
       </div>
     </div>
     <div class="footer-bottom">
       <p>&copy; 2026 ReachTheSoul. Where every soul finds care.</p>
-      <p style="margin-top:6px;">Powered by <strong style="color:var(--gray-300);font-weight:600;">Blessing Media Global</strong></p>
     </div>
   </div>
 </footer>
