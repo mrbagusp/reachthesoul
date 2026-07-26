@@ -660,8 +660,9 @@ const BODY = `
       </div>
     </div>
     <div class="footer-bottom">
-      <p>&copy; 2026 ReachTheSoul. Where every soul finds care.</p>
-    </div>
+  <p>&copy; 2026 ReachTheSoul. Where every soul finds care.</p>
+  <p style="margin-top: 8px; font-size: 11px; color: var(--gray-500); opacity: 0.7;">Powered by Blessing Media Global</p>
+</div>
   </div>
 </footer>
 

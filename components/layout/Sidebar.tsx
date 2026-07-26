@@ -240,6 +240,10 @@ export function Sidebar({ role, userName, onLogout, mobileOpen, onMobileClose }:
           <LogOut size={12} />
           <span>Sign out</span>
         </button>
+        <div className="mt-3 pt-3 border-t border-sidebar-border/50 text-center">
+          <p className="text-[9px] text-sidebar-foreground/40 uppercase tracking-wider">Powered by</p>
+          <p className="text-[10px] text-sidebar-foreground/60 font-medium">Blessing Media Global</p>
+        </div>
       </div>
     </aside>
     </>
