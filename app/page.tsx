@@ -655,6 +655,7 @@ const BODY = `
   <a href="mailto:hello@reachthesoul.org">Partner With Us</a>
   <a href="/privacy">Privacy Policy</a>
   <a href="/terms">Terms of Service</a>
+  <a href="/data-deletion">Data Deletion</a>
         </div>
       </div>
     </div>
