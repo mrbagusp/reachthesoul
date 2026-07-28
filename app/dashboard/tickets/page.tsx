@@ -41,7 +41,6 @@ const SOURCE_STYLE: Record<string, { color: string; bg: string }> = {
   call:      { color: "text-amber-700",   bg: "bg-amber-50 border-amber-200" },
 };
 
-// ── Channel display config ───────────────────────────────────────────────────
 const CHANNEL_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
   facebook:        { label: "Facebook",  icon: <Facebook size={10} />,      color: "text-blue-700",    bg: "bg-blue-50 border-blue-200" },
   instagram:       { label: "Instagram", icon: <Instagram size={10} />,     color: "text-pink-700",    bg: "bg-pink-50 border-pink-200" },
@@ -51,7 +50,6 @@ const CHANNEL_CONFIG: Record<string, { label: string; icon: React.ReactNode; col
   call:            { label: "Call",      icon: <Phone size={10} />,         color: "text-amber-700",   bg: "bg-amber-50 border-amber-200" },
 };
 
-// ── Period helpers ────────────────────────────────────────────────────────────
 type Period = "all" | "today" | "this_week" | "this_month" | "custom";
 
 function getPeriodRange(period: Period, customFrom: string, customTo: string): [Date | null, Date | null] {
@@ -76,11 +74,9 @@ function getPeriodRange(period: Period, customFrom: string, customTo: string): [
   return [null, null];
 }
 
-// ── Sort helpers ──────────────────────────────────────────────────────────────
 type SortKey = "date" | "ticketNumber";
 type SortDir = "asc" | "desc";
 
-// ── Pagination constants ──────────────────────────────────────────────────────
 const TICKETS_PER_PAGE = 25;
 
 export default function TicketsPage() {
@@ -97,21 +93,19 @@ export default function TicketsPage() {
   const [customFrom, setCustomFrom]       = useState("");
   const [customTo, setCustomTo]           = useState("");
   const [sortKey, setSortKey]             = useState<SortKey>("date");
-  const [sortDir, setSortDir]             = useState<SortDir>("desc");   // latest first by default
+  const [sortDir, setSortDir]             = useState<SortDir>("desc");
   const [tickets, setTickets]             = useState<Ticket[]>([]);
   const [selected, setSelected]           = useState<Set<string>>(new Set());
   const [bulkAction, setBulkAction]       = useState<string>("");
   const [view, setView]                   = useState<"list" | "kanban">("list");
   const [currentPage, setCurrentPage]     = useState(1);
 
-  // Sync Firestore tickets into local state
   useMemo(() => {
     if (firestoreTickets.length > 0) setTickets(firestoreTickets);
   }, [firestoreTickets]);
 
   const agents = users.filter((u: any) => u.role === "agent" && u.isActive);
 
-  // Compute unique program names for filter dropdown
   const programNames = useMemo(() => {
     const names = new Set(
       tickets.map((t) => (t as any).programName).filter(Boolean) as string[]
@@ -123,12 +117,10 @@ export default function TicketsPage() {
     respondents.find((r) => r.respondentId === id)?.fullName ?? "Unknown";
 
   const getSourceName = (ticket: Ticket) => {
-    // Try lead source from ticket first
     if (ticket.leadSourceId) {
       const ls = leadSources.find((s: any) => s.id === ticket.leadSourceId);
       if (ls) return (ls as any).name as string;
     }
-    // Fallback: derive from channel field (set by webhook processor)
     const ch = (ticket as any).channel as string | undefined;
     if (ch) {
       const MAP: Record<string, string> = {
@@ -140,7 +132,6 @@ export default function TicketsPage() {
     return null;
   };
 
-  // ── Toggle sort column ────────────────────────────────────────────────────
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -150,7 +141,6 @@ export default function TicketsPage() {
     }
   };
 
-  // ── Filtered + sorted list ────────────────────────────────────────────────
   const filtered = useMemo(() => {
     const [from, to] = getPeriodRange(period, customFrom, customTo);
 
@@ -180,7 +170,6 @@ export default function TicketsPage() {
       });
   }, [tickets, search, statusFilter, priorityFilter, programFilter, period, customFrom, customTo, sortKey, sortDir]);
 
-  // ── Pagination logic ──────────────────────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(filtered.length / TICKETS_PER_PAGE));
 
   const paginatedTickets = useMemo(() => {
@@ -188,21 +177,17 @@ export default function TicketsPage() {
     return filtered.slice(start, start + TICKETS_PER_PAGE);
   }, [filtered, currentPage]);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [search, statusFilter, priorityFilter, programFilter, period, customFrom, customTo]);
 
-  // Clamp currentPage if it exceeds totalPages (e.g. after deleting tickets)
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [totalPages, currentPage]);
 
-  // Range display helper
   const rangeStart = filtered.length === 0 ? 0 : (currentPage - 1) * TICKETS_PER_PAGE + 1;
   const rangeEnd   = Math.min(currentPage * TICKETS_PER_PAGE, filtered.length);
 
-  // Generate compact page number list: [1, 2, "...", 5, 6, 7, "...", 12]
   const getPageNumbers = (): (number | "ellipsis")[] => {
     if (totalPages <= 7) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -218,7 +203,6 @@ export default function TicketsPage() {
     return pages;
   };
 
-  // ── Selection helpers ─────────────────────────────────────────────────────
   const allSelected   = filtered.length > 0 && filtered.every((t) => selected.has(t.ticketId));
   const someSelected  = filtered.some((t) => selected.has(t.ticketId));
   const selectedCount = [...selected].filter((id) => filtered.some((t) => t.ticketId === id)).length;
@@ -275,7 +259,6 @@ export default function TicketsPage() {
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "tickets.csv"; a.click();
   };
 
-  // ── Sort indicator component ──────────────────────────────────────────────
   const SortIcon = ({ col }: { col: SortKey }) => (
     <span className="inline-flex flex-col ml-1 opacity-60">
       <ChevronUp   size={8} className={cn(sortKey === col && sortDir === "asc"  && "opacity-100 text-primary")} />
@@ -303,8 +286,7 @@ export default function TicketsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-5">
-      {/* ── Header ─────────────────────────────────────────────────────────── */}
+    <div className="flex flex-col gap-5 pb-24">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Ticket Queue</h2>
@@ -334,14 +316,11 @@ export default function TicketsPage() {
           <Button variant="outline" size="sm" onClick={exportCSV} className="h-8 text-xs gap-1.5">
             <Download size={12} /> Export CSV
           </Button>
-
         </div>
       </div>
 
-      {/* ── Filters ────────────────────────────────────────────────────────── */}
       <Card className="border border-border shadow-none">
         <CardContent className="p-4 flex flex-col gap-3">
-          {/* Row 1: search + status + priority */}
           <div className="flex flex-wrap items-center gap-3">
             <div className="relative flex-1 min-w-[200px]">
               <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -372,7 +351,6 @@ export default function TicketsPage() {
                 <SelectItem value="low">Low</SelectItem>
               </SelectContent>
             </Select>
-            {/* Program filter */}
             {programNames.length > 0 && (
               <Select value={programFilter} onValueChange={setProgramFilter}>
                 <SelectTrigger className="h-8 w-40 text-xs"><SelectValue placeholder="Program" /></SelectTrigger>
@@ -386,7 +364,6 @@ export default function TicketsPage() {
             )}
           </div>
 
-          {/* Row 2: period filter */}
           <div className="flex flex-wrap items-center gap-2">
             <Calendar size={13} className="text-muted-foreground flex-shrink-0" />
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -406,7 +383,6 @@ export default function TicketsPage() {
               ))}
             </div>
 
-            {/* Custom date range inputs */}
             {period === "custom" && (
               <div className="flex items-center gap-2 ml-1">
                 <input
@@ -428,7 +404,6 @@ export default function TicketsPage() {
         </CardContent>
       </Card>
 
-      {/* ── Bulk action bar ─────────────────────────────────────────────────── */}
       {selectedCount > 0 && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
           <CheckSquare size={14} className="text-primary flex-shrink-0" />
@@ -459,264 +434,233 @@ export default function TicketsPage() {
         </div>
       )}
 
-      {/* ── Kanban Board ────────────────────────────────────────────────────── */}
       {view === "kanban" && (
         <KanbanBoard tickets={filtered} onStatusChange={handleKanbanStatusChange} />
       )}
 
-      {/* ── Table ───────────────────────────────────────────────────────────── */}
       {view === "list" && (
         <>
-        <Card className="border border-border shadow-none overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/40">
-                {/* Checkbox */}
-                <th className="w-10 px-4 py-3">
-                  <input
-                    type="checkbox"
-                    className="w-3.5 h-3.5 rounded cursor-pointer accent-primary"
-                    checked={allSelected}
-                    ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
-                    onChange={toggleAll}
-                  />
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-2 py-3">Ticket #</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Respondent</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Subject</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Status</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Priority</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">
-                  <span className="flex items-center gap-1"><Globe size={10} />Channel</span>
-                </th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Agent</th>
-
-                {/* Sortable Date */}
-                <th
-                  className="text-left text-xs font-medium text-muted-foreground px-3 py-3 cursor-pointer select-none hover:text-foreground transition-colors"
-                  onClick={() => handleSort("date")}
-                >
-                  <span className="flex items-center gap-0.5">
-                    Date <SortIcon col="date" />
-                  </span>
-                </th>
-
-                {/* Sortable Time (shares same key as date) */}
-                <th
-                  className="text-left text-xs font-medium text-muted-foreground px-3 py-3 cursor-pointer select-none hover:text-foreground transition-colors"
-                  onClick={() => handleSort("date")}
-                >
-                  <span className="flex items-center gap-0.5">
-                    Time <SortIcon col="date" />
-                  </span>
-                </th>
-
-                {/* HoD */}
-                <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">
-                  <span className="flex items-center gap-1"><Bot size={10} />HoD</span>
-                </th>
-                <th className="px-3 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={12} className="text-center py-14 text-sm text-muted-foreground">
-                    No tickets match your filters.
-                  </td>
-                </tr>
-              )}
-              {paginatedTickets.map((ticket) => {
-                const isSelected  = selected.has(ticket.ticketId);
-                const isNew       = (ticket as any).hasUnread === true;
-                const isHoD       = ticket.handledBy === "escalated" && ticket.escalation;
-                const createdDate = new Date(ticket.createdAt);
-                const lastMsg     = (ticket as any).lastMessage ?? "";
-                const lastMsgSender = (ticket as any).lastMessageSender ?? "";
-                const channel     = (ticket as any).channel as string ?? "";
-                const programName = (ticket as any).programName as string ?? "";
-                const chConfig    = CHANNEL_CONFIG[channel];
-
-                return (
-                  <tr
-                    key={ticket.ticketId}
-                    className={cn(
-                      "border-b border-border last:border-0 hover:bg-muted/20 transition-colors group",
-                      isSelected && "bg-primary/5",
-                      isNew && "border-l-2 border-l-blue-400 bg-blue-50/30"
-                    )}
-                  >
-                    {/* Checkbox */}
-                    <td className="w-10 px-4 py-3">
-                      <input type="checkbox" className="w-3.5 h-3.5 rounded cursor-pointer accent-primary"
-                        checked={isSelected} onChange={() => toggleOne(ticket.ticketId)} />
-                    </td>
-
-                    {/* Ticket # + New badge */}
-                    <td className="px-2 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <Link
-                          href={`/dashboard/tickets/${ticket.ticketId}`}
-                          className="text-primary font-mono text-xs font-semibold hover:underline whitespace-nowrap"
-                        >
-                          {ticket.ticketNumber}
-                        </Link>
-                        {isNew && (
-                          <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-blue-500 text-white leading-none animate-pulse">
-                            New
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Respondent */}
-                    <td className="px-3 py-3 text-sm font-medium text-foreground whitespace-nowrap">
-                      {getRespondentName(ticket.respondentId)}
-                    </td>
-
-                    {/* Subject + Last Message */}
-                    <td className="px-3 py-3 max-w-[220px]">
-                      <p className="text-xs text-foreground truncate font-medium">{ticket.subject}</p>
-                      {lastMsg && lastMsg !== ticket.subject && (
-                        <p className={cn(
-                          "text-[10px] truncate mt-0.5",
-                          isNew ? "text-blue-600 font-semibold" : "text-muted-foreground"
-                        )}>
-                          {lastMsgSender ? `${lastMsgSender}: ` : ""}{lastMsg}
-                        </p>
-                      )}
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-3 py-3"><TicketStatusBadge status={ticket.status} /></td>
-
-                    {/* Priority */}
-                    <td className="px-3 py-3"><TicketPriorityBadge priority={ticket.priority} /></td>
-
-                    {/* Channel + Program */}
-                    <td className="px-3 py-3">
-                      <div className="flex flex-col gap-1">
-                        {chConfig ? (
-                          <span className={cn("inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border whitespace-nowrap w-fit", chConfig.color, chConfig.bg)}>
-                            {chConfig.icon}
-                            {chConfig.label}
-                          </span>
-                        ) : (
-                          (() => {
-                            const src = getSourceName(ticket);
-                            if (!src) return <span className="text-[10px] text-muted-foreground/40">—</span>;
-                            const style = SOURCE_STYLE[src.toLowerCase()] ?? { color: "text-slate-700", bg: "bg-slate-50 border-slate-200" };
-                            return <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full border whitespace-nowrap", style.color, style.bg)}>{src}</span>;
-                          })()
-                        )}
-                        {programName && (
-                          <span className="text-[9px] font-semibold text-primary/70 uppercase tracking-wide truncate max-w-[120px]">
-                            {programName}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Agent */}
-                    <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                      {ticket.assignedAgentName ?? <span className="italic text-muted-foreground/40">Unassigned</span>}
-                    </td>
-
-                    {/* Date */}
-                    <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
-                      {createdDate.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
-                    </td>
-
-                    {/* Time */}
-                    <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap tabular-nums">
-                      {createdDate.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
-                    </td>
-
-                    {/* HoD */}
-                    <td className="px-3 py-3">
-                      {isHoD ? (
-                        <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-700 whitespace-nowrap">
-                          <ShieldAlert size={9} />
-                          {HOD_LABELS[ticket.escalation!.reason] ?? "Escalated"}
-                        </span>
-                      ) : ticket.aiMessageCount && ticket.aiMessageCount > 0 ? (
-                        <span className="flex items-center gap-1 text-[10px] text-blue-600 font-medium">
-                          <Bot size={9} />AI
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground/40">—</span>
-                      )}
-                    </td>
-
-                    {/* Arrow */}
-                    <td className="px-3 py-3">
-                      <Link href={`/dashboard/tickets/${ticket.ticketId}`}>
-                        <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
-                      </Link>
-                    </td>
+          <Card className="border border-border shadow-none overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[1200px]">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40">
+                    <th className="w-10 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        className="w-3.5 h-3.5 rounded cursor-pointer accent-primary"
+                        checked={allSelected}
+                        ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected; }}
+                        onChange={toggleAll}
+                      />
+                    </th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-2 py-3">Ticket #</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Respondent</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Subject</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Status</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Priority</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">
+                      <span className="flex items-center gap-1"><Globe size={10} />Channel</span>
+                    </th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">Agent</th>
+                    <th
+                      className="text-left text-xs font-medium text-muted-foreground px-3 py-3 cursor-pointer select-none hover:text-foreground transition-colors"
+                      onClick={() => handleSort("date")}
+                    >
+                      <span className="flex items-center gap-0.5">
+                        Date <SortIcon col="date" />
+                      </span>
+                    </th>
+                    <th
+                      className="text-left text-xs font-medium text-muted-foreground px-3 py-3 cursor-pointer select-none hover:text-foreground transition-colors"
+                      onClick={() => handleSort("date")}
+                    >
+                      <span className="flex items-center gap-0.5">
+                        Time <SortIcon col="date" />
+                      </span>
+                    </th>
+                    <th className="text-left text-xs font-medium text-muted-foreground px-3 py-3">
+                      <span className="flex items-center gap-1"><Bot size={10} />HoD</span>
+                    </th>
+                    <th className="px-3 py-3" />
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Card>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={12} className="text-center py-14 text-sm text-muted-foreground">
+                        No tickets match your filters.
+                      </td>
+                    </tr>
+                  )}
+                  {paginatedTickets.map((ticket) => {
+                    const isSelected  = selected.has(ticket.ticketId);
+                    const isNew       = (ticket as any).hasUnread === true;
+                    const isHoD       = ticket.handledBy === "escalated" && ticket.escalation;
+                    const createdDate = new Date(ticket.createdAt);
+                    const lastMsg     = (ticket as any).lastMessage ?? "";
+                    const lastMsgSender = (ticket as any).lastMessageSender ?? "";
+                    const channel     = (ticket as any).channel as string ?? "";
+                    const programName = (ticket as any).programName as string ?? "";
+                    const chConfig    = CHANNEL_CONFIG[channel];
 
-        {/* ── Pagination controls ─────────────────────────────────────────── */}
-        {filtered.length > TICKETS_PER_PAGE && (
-          <div className="flex items-center justify-between gap-3 px-1">
-            <p className="text-xs text-muted-foreground">
-              Showing {rangeStart}–{rangeEnd} of {filtered.length}
-            </p>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className={cn(
-                  "h-8 w-8 flex items-center justify-center rounded-md border border-border transition-colors",
-                  currentPage === 1
-                    ? "text-muted-foreground/40 cursor-not-allowed"
-                    : "text-foreground hover:bg-muted"
-                )}
-                aria-label="Previous page"
-              >
-                <ChevronLeft size={14} />
-              </button>
-
-              {getPageNumbers().map((p, i) =>
-                p === "ellipsis" ? (
-                  <span key={`ellipsis-${i}`} className="px-2 text-xs text-muted-foreground">…</span>
-                ) : (
-                  <button
-                    key={p}
-                    onClick={() => setCurrentPage(p)}
-                    className={cn(
-                      "h-8 min-w-[32px] px-2 rounded-md border text-xs font-medium transition-colors",
-                      p === currentPage
-                        ? "bg-primary text-white border-primary"
-                        : "border-border text-foreground hover:bg-muted"
-                    )}
-                  >
-                    {p}
-                  </button>
-                )
-              )}
-
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className={cn(
-                  "h-8 w-8 flex items-center justify-center rounded-md border border-border transition-colors",
-                  currentPage === totalPages
-                    ? "text-muted-foreground/40 cursor-not-allowed"
-                    : "text-foreground hover:bg-muted"
-                )}
-                aria-label="Next page"
-              >
-                <ChevronRight size={14} />
-              </button>
+                    return (
+                      <tr
+                        key={ticket.ticketId}
+                        className={cn(
+                          "border-b border-border last:border-0 hover:bg-muted/20 transition-colors group",
+                          isSelected && "bg-primary/5",
+                          isNew && "border-l-2 border-l-blue-400 bg-blue-50/30"
+                        )}
+                      >
+                        <td className="w-10 px-4 py-3">
+                          <input type="checkbox" className="w-3.5 h-3.5 rounded cursor-pointer accent-primary"
+                            checked={isSelected} onChange={() => toggleOne(ticket.ticketId)} />
+                        </td>
+                        <td className="px-2 py-3">
+                          <div className="flex items-center gap-1.5">
+                            <Link
+                              href={`/dashboard/tickets/${ticket.ticketId}`}
+                              className="text-primary font-mono text-xs font-semibold hover:underline whitespace-nowrap"
+                            >
+                              {ticket.ticketNumber}
+                            </Link>
+                            {isNew && (
+                              <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-blue-500 text-white leading-none animate-pulse">
+                                New
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-sm font-medium text-foreground whitespace-nowrap">
+                          {getRespondentName(ticket.respondentId)}
+                        </td>
+                        <td className="px-3 py-3 max-w-[220px]">
+                          <p className="text-xs text-foreground truncate font-medium">{ticket.subject}</p>
+                          {lastMsg && lastMsg !== ticket.subject && (
+                            <p className={cn(
+                              "text-[10px] truncate mt-0.5",
+                              isNew ? "text-blue-600 font-semibold" : "text-muted-foreground"
+                            )}>
+                              {lastMsgSender ? `${lastMsgSender}: ` : ""}{lastMsg}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-3 py-3"><TicketStatusBadge status={ticket.status} /></td>
+                        <td className="px-3 py-3"><TicketPriorityBadge priority={ticket.priority} /></td>
+                        <td className="px-3 py-3">
+                          <div className="flex flex-col gap-1">
+                            {chConfig ? (
+                              <span className={cn("inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border whitespace-nowrap w-fit", chConfig.color, chConfig.bg)}>
+                                {chConfig.icon}
+                                {chConfig.label}
+                              </span>
+                            ) : (
+                              (() => {
+                                const src = getSourceName(ticket);
+                                if (!src) return <span className="text-[10px] text-muted-foreground/40">—</span>;
+                                const style = SOURCE_STYLE[src.toLowerCase()] ?? { color: "text-slate-700", bg: "bg-slate-50 border-slate-200" };
+                                return <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full border whitespace-nowrap", style.color, style.bg)}>{src}</span>;
+                              })()
+                            )}
+                            {programName && (
+                              <span className="text-[9px] font-semibold text-primary/70 uppercase tracking-wide truncate max-w-[120px]">
+                                {programName}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                          {ticket.assignedAgentName ?? <span className="italic text-muted-foreground/40">Unassigned</span>}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                          {createdDate.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                        </td>
+                        <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap tabular-nums">
+                          {createdDate.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                        </td>
+                        <td className="px-3 py-3">
+                          {isHoD ? (
+                            <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-700 whitespace-nowrap">
+                              <ShieldAlert size={9} />
+                              {HOD_LABELS[ticket.escalation!.reason] ?? "Escalated"}
+                            </span>
+                          ) : ticket.aiMessageCount && ticket.aiMessageCount > 0 ? (
+                            <span className="flex items-center gap-1 text-[10px] text-blue-600 font-medium">
+                              <Bot size={9} />AI
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground/40">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          <Link href={`/dashboard/tickets/${ticket.ticketId}`}>
+                            <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          </div>
-        )}
+          </Card>
+
+          {filtered.length > TICKETS_PER_PAGE && (
+            <div className="flex items-center justify-between gap-3 px-1 pr-24">
+              <p className="text-xs text-muted-foreground">
+                Showing {rangeStart}–{rangeEnd} of {filtered.length}
+              </p>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className={cn(
+                    "h-8 w-8 flex items-center justify-center rounded-md border border-border transition-colors",
+                    currentPage === 1
+                      ? "text-muted-foreground/40 cursor-not-allowed"
+                      : "text-foreground hover:bg-muted"
+                  )}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+
+                {getPageNumbers().map((p, i) =>
+                  p === "ellipsis" ? (
+                    <span key={`ellipsis-${i}`} className="px-2 text-xs text-muted-foreground">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p)}
+                      className={cn(
+                        "h-8 min-w-[32px] px-2 rounded-md border text-xs font-medium transition-colors",
+                        p === currentPage
+                          ? "bg-primary text-white border-primary"
+                          : "border-border text-foreground hover:bg-muted"
+                      )}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className={cn(
+                    "h-8 w-8 flex items-center justify-center rounded-md border border-border transition-colors",
+                    currentPage === totalPages
+                      ? "text-muted-foreground/40 cursor-not-allowed"
+                      : "text-foreground hover:bg-muted"
+                  )}
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
