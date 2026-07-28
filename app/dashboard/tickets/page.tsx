@@ -80,6 +80,9 @@ function getPeriodRange(period: Period, customFrom: string, customTo: string): [
 type SortKey = "date" | "ticketNumber";
 type SortDir = "asc" | "desc";
 
+// ── Pagination constants ──────────────────────────────────────────────────────
+const TICKETS_PER_PAGE = 25;
+
 export default function TicketsPage() {
   const { tickets: firestoreTickets, loading: ticketsLoading } = useTickets();
   const { respondents, loading: respLoading } = useRespondents();
@@ -99,6 +102,7 @@ export default function TicketsPage() {
   const [selected, setSelected]           = useState<Set<string>>(new Set());
   const [bulkAction, setBulkAction]       = useState<string>("");
   const [view, setView]                   = useState<"list" | "kanban">("list");
+  const [currentPage, setCurrentPage]     = useState(1);
 
   // Sync Firestore tickets into local state
   useMemo(() => {
@@ -147,9 +151,6 @@ export default function TicketsPage() {
   };
 
   // ── Filtered + sorted list ────────────────────────────────────────────────
-  // ── Pagination ─────────────────────────────────────────────────────────
-  const TICKETS_PER_PAGE = 25;
-  const [currentPage, setCurrentPage] = useState(1);
   const filtered = useMemo(() => {
     const [from, to] = getPeriodRange(period, customFrom, customTo);
 
@@ -178,6 +179,44 @@ export default function TicketsPage() {
         return sortDir === "asc" ? diff : -diff;
       });
   }, [tickets, search, statusFilter, priorityFilter, programFilter, period, customFrom, customTo, sortKey, sortDir]);
+
+  // ── Pagination logic ──────────────────────────────────────────────────────
+  const totalPages = Math.max(1, Math.ceil(filtered.length / TICKETS_PER_PAGE));
+
+  const paginatedTickets = useMemo(() => {
+    const start = (currentPage - 1) * TICKETS_PER_PAGE;
+    return filtered.slice(start, start + TICKETS_PER_PAGE);
+  }, [filtered, currentPage]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, priorityFilter, programFilter, period, customFrom, customTo]);
+
+  // Clamp currentPage if it exceeds totalPages (e.g. after deleting tickets)
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
+
+  // Range display helper
+  const rangeStart = filtered.length === 0 ? 0 : (currentPage - 1) * TICKETS_PER_PAGE + 1;
+  const rangeEnd   = Math.min(currentPage * TICKETS_PER_PAGE, filtered.length);
+
+  // Generate compact page number list: [1, 2, "...", 5, 6, 7, "...", 12]
+  const getPageNumbers = (): (number | "ellipsis")[] => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages: (number | "ellipsis")[] = [];
+    pages.push(1);
+    if (currentPage > 3) pages.push("ellipsis");
+    const start = Math.max(2, currentPage - 1);
+    const end   = Math.min(totalPages - 1, currentPage + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (currentPage < totalPages - 2) pages.push("ellipsis");
+    pages.push(totalPages);
+    return pages;
+  };
 
   // ── Selection helpers ─────────────────────────────────────────────────────
   const allSelected   = filtered.length > 0 && filtered.every((t) => selected.has(t.ticketId));
@@ -269,7 +308,11 @@ export default function TicketsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Ticket Queue</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{filtered.length} ticket{filtered.length !== 1 ? "s" : ""} found</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {filtered.length === 0
+              ? "No tickets found"
+              : `Showing ${rangeStart}–${rangeEnd} of ${filtered.length} ticket${filtered.length !== 1 ? "s" : ""}`}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center border border-border rounded-md overflow-hidden">
@@ -423,6 +466,7 @@ export default function TicketsPage() {
 
       {/* ── Table ───────────────────────────────────────────────────────────── */}
       {view === "list" && (
+        <>
         <Card className="border border-border shadow-none overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -482,7 +526,7 @@ export default function TicketsPage() {
                   </td>
                 </tr>
               )}
-              {filtered.map((ticket) => {
+              {paginatedTickets.map((ticket) => {
                 const isSelected  = selected.has(ticket.ticketId);
                 const isNew       = (ticket as any).hasUnread === true;
                 const isHoD       = ticket.handledBy === "escalated" && ticket.escalation;
@@ -616,6 +660,64 @@ export default function TicketsPage() {
             </tbody>
           </table>
         </Card>
+
+        {/* ── Pagination controls ─────────────────────────────────────────── */}
+        {filtered.length > TICKETS_PER_PAGE && (
+          <div className="flex items-center justify-between gap-3 px-1">
+            <p className="text-xs text-muted-foreground">
+              Showing {rangeStart}–{rangeEnd} of {filtered.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className={cn(
+                  "h-8 w-8 flex items-center justify-center rounded-md border border-border transition-colors",
+                  currentPage === 1
+                    ? "text-muted-foreground/40 cursor-not-allowed"
+                    : "text-foreground hover:bg-muted"
+                )}
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={14} />
+              </button>
+
+              {getPageNumbers().map((p, i) =>
+                p === "ellipsis" ? (
+                  <span key={`ellipsis-${i}`} className="px-2 text-xs text-muted-foreground">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    className={cn(
+                      "h-8 min-w-[32px] px-2 rounded-md border text-xs font-medium transition-colors",
+                      p === currentPage
+                        ? "bg-primary text-white border-primary"
+                        : "border-border text-foreground hover:bg-muted"
+                    )}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className={cn(
+                  "h-8 w-8 flex items-center justify-center rounded-md border border-border transition-colors",
+                  currentPage === totalPages
+                    ? "text-muted-foreground/40 cursor-not-allowed"
+                    : "text-foreground hover:bg-muted"
+                )}
+                aria-label="Next page"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+        </>
       )}
     </div>
   );
