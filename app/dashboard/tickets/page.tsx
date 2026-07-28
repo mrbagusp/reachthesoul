@@ -1,8 +1,8 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
-  Filter, Search, ChevronRight, Download,
+  Filter, Search, ChevronLeft, ChevronRight, Download,
   CheckSquare, X, UserCheck, CheckCircle2, XCircle, Trash2,
   LayoutList, Columns, Bot, ShieldAlert, ChevronUp, ChevronDown as ChevronDownIcon,
   Calendar, Globe, MessageCircle, Instagram, Facebook, Phone, Mail,
@@ -147,6 +147,9 @@ export default function TicketsPage() {
   };
 
   // ── Filtered + sorted list ────────────────────────────────────────────────
+  // ── Pagination ─────────────────────────────────────────────────────────
+  const TICKETS_PER_PAGE = 25;
+  const [currentPage, setCurrentPage] = useState(1);
   const filtered = useMemo(() => {
     const [from, to] = getPeriodRange(period, customFrom, customTo);
 
