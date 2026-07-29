@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ChevronLeft, Send, Lock, Unlock, AlertTriangle, Phone, Mail,
   Globe, Tag, CheckCircle2, ChevronDown, User, Zap, X, Printer,
@@ -64,8 +64,8 @@ function groupByDate(msgs: Message[]) {
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const currentUser = useAuthStore((s) => s.currentUser);
-
   // Firestore data
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [ticketLoading, setTicketLoading] = useState(true);
@@ -527,9 +527,9 @@ export default function TicketDetailPage() {
       {/* Breadcrumb */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Link href="/dashboard/tickets" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+          <button onClick={() => router.back()} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
             <ChevronLeft size={14} />Ticket Queue
-          </Link>
+          </button>
           <span className="text-muted-foreground/40 text-xs">/</span>
           <span className="text-xs text-foreground font-medium font-mono">{ticket.ticketNumber}</span>
         </div>
