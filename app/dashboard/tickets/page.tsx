@@ -1,6 +1,7 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   Filter, Search, ChevronLeft, ChevronRight, Download,
   CheckSquare, X, UserCheck, CheckCircle2, XCircle, Trash2,
@@ -80,6 +81,10 @@ type SortDir = "asc" | "desc";
 const TICKETS_PER_PAGE = 25;
 
 export default function TicketsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const { tickets: firestoreTickets, loading: ticketsLoading } = useTickets();
   const { respondents, loading: respLoading } = useRespondents();
   const { items: users, loading: usersLoading } = useUsers();
@@ -98,8 +103,33 @@ export default function TicketsPage() {
   const [selected, setSelected]           = useState<Set<string>>(new Set());
   const [bulkAction, setBulkAction]       = useState<string>("");
   const [view, setView]                   = useState<"list" | "kanban">("list");
-  const [currentPage, setCurrentPage]     = useState(1);
 
+  // ── URL-based pagination ─────────────────────────────────────────────────
+  // Read current page from URL (?page=N). Falls back to 1 if missing/invalid.
+  // Using URL as source of truth means browser Back/Forward buttons restore
+  // the page correctly, and users can bookmark/share specific pages.
+  const currentPage = useMemo(() => {
+    const p = parseInt(searchParams.get("page") ?? "1", 10);
+    return Number.isFinite(p) && p >= 1 ? p : 1;
+  }, [searchParams]);
+
+  // Update URL when user changes page (without full navigation reload)
+  const setCurrentPage = useCallback(
+    (page: number | ((prev: number) => number)) => {
+      const nextPage = typeof page === "function" ? page(currentPage) : page;
+      const params = new URLSearchParams(searchParams.toString());
+      if (nextPage <= 1) {
+        params.delete("page");
+      } else {
+        params.set("page", String(nextPage));
+      }
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [currentPage, pathname, router, searchParams]
+  );
+
+  // Sync Firestore tickets into local state
   useMemo(() => {
     if (firestoreTickets.length > 0) setTickets(firestoreTickets);
   }, [firestoreTickets]);
@@ -177,13 +207,17 @@ export default function TicketsPage() {
     return filtered.slice(start, start + TICKETS_PER_PAGE);
   }, [filtered, currentPage]);
 
+  // Reset to page 1 when filters change (except on first mount / URL restore)
   useEffect(() => {
     setCurrentPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, statusFilter, priorityFilter, programFilter, period, customFrom, customTo]);
 
+  // Clamp currentPage if it exceeds totalPages
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [totalPages, currentPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalPages]);
 
   const rangeStart = filtered.length === 0 ? 0 : (currentPage - 1) * TICKETS_PER_PAGE + 1;
   const rangeEnd   = Math.min(currentPage * TICKETS_PER_PAGE, filtered.length);
@@ -594,7 +628,7 @@ export default function TicketsPage() {
                           )}
                         </td>
                         <td className="px-3 py-3">
-                          <Link href={`/dashboard/tickets/${ticket.ticketId}`}>
+                          <Link href={`/dashboard/tickets/${ticket.ticketId}${currentPage > 1 ? `?returnPage=${currentPage}` : ""}`}>
                             <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
                           </Link>
                         </td>
