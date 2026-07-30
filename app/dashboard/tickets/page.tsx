@@ -124,7 +124,7 @@ export default function TicketsPage() {
         params.set("page", String(nextPage));
       }
       const query = params.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+      router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
     },
     [currentPage, pathname, router, searchParams]
   );
