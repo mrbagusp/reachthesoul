@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Search, ChevronRight, ChevronLeft, ArrowUpDown, Calendar, Ticket as TicketIcon, Phone, Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -24,7 +25,7 @@ const colorOf = (name: string) => {
   return PALETTE[Math.abs(h) % PALETTE.length];
 };
 
-// ─── Period options (like Tickets page) ────────────────────────────────────
+// ─── Period options ─────────────────────────────────────────────────────────
 type Period = "all" | "today" | "this_week" | "this_month" | "custom";
 function getPeriodRange(period: Period, from: string, to: string): [Date | null, Date | null] {
   const now = new Date();
@@ -41,16 +42,40 @@ function getPeriodRange(period: Period, from: string, to: string): [Date | null,
 const RESPONDENTS_PER_PAGE = 25;
 
 export default function RespondentsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const { respondents, loading } = useRespondents();
   const { tickets }              = useTickets();
 
   const [query, setQuery]           = useState("");
   const [srcFilter, setSrcFilter]   = useState<string>("all");
-  const [sortMode, setSortMode]     = useState<"all" | "new">("all"); // new = most recent first
+  const [sortMode, setSortMode]     = useState<"all" | "new">("all");
   const [period, setPeriod]         = useState<Period>("all");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo,   setCustomTo]   = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+
+  // ── URL-based pagination ─────────────────────────────────────────────────
+  const currentPage = useMemo(() => {
+    const p = parseInt(searchParams.get("page") ?? "1", 10);
+    return Number.isFinite(p) && p >= 1 ? p : 1;
+  }, [searchParams]);
+
+  const setCurrentPage = useCallback(
+    (page: number | ((prev: number) => number)) => {
+      const nextPage = typeof page === "function" ? page(currentPage) : page;
+      const params = new URLSearchParams(searchParams.toString());
+      if (nextPage <= 1) {
+        params.delete("page");
+      } else {
+        params.set("page", String(nextPage));
+      }
+      const query = params.toString();
+      router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [currentPage, pathname, router, searchParams]
+  );
 
   // ── Ticket count per respondent (for filter + display) ────────────────
   const ticketsByRespondent = useMemo(() => {
@@ -67,7 +92,7 @@ export default function RespondentsPage() {
     return isNaN(d.getTime()) ? null : d;
   };
 
-  // ── Available sources for filter (only ones with respondents) ─────────
+  // ── Available sources for filter ──────────────────────────────────────
   const availableSources = useMemo(() => {
     const s = new Set<string>();
     respondents.forEach((r: any) => { if (r.leadSource) s.add(String(r.leadSource)); });
@@ -87,7 +112,6 @@ export default function RespondentsPage() {
 
         const matchSrc = srcFilter === "all" || r.leadSource === srcFilter;
 
-        // Period filter (by first contact / created)
         const cd = contactDate(r);
         const matchPeriod = !pFrom || !pTo ? true : (cd && cd >= pFrom && cd <= pTo);
 
@@ -111,15 +135,27 @@ export default function RespondentsPage() {
     return filtered.slice(start, start + RESPONDENTS_PER_PAGE);
   }, [filtered, currentPage]);
 
-  // Reset to page 1 when filters change
+  // Reset to page 1 when filters CHANGE (compare signature, survive re-mounts)
+  const filterSignature = `${query}|${srcFilter}|${sortMode}|${period}|${customFrom}|${customTo}`;
+  const prevFilterSignature = useRef<string | null>(null);
   useEffect(() => {
-    setCurrentPage(1);
-  }, [query, srcFilter, sortMode, period, customFrom, customTo]);
+    if (prevFilterSignature.current === null) {
+      prevFilterSignature.current = filterSignature;
+      return;
+    }
+    if (prevFilterSignature.current !== filterSignature) {
+      prevFilterSignature.current = filterSignature;
+      setCurrentPage(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterSignature]);
 
-  // Clamp currentPage if it exceeds totalPages
+  // Clamp currentPage if it exceeds totalPages — but skip when data isn't loaded yet
   useEffect(() => {
+    if (filtered.length === 0) return;
     if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [totalPages, currentPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalPages, filtered.length]);
 
   const rangeStart = filtered.length === 0 ? 0 : (currentPage - 1) * RESPONDENTS_PER_PAGE + 1;
   const rangeEnd   = Math.min(currentPage * RESPONDENTS_PER_PAGE, filtered.length);
@@ -140,7 +176,7 @@ export default function RespondentsPage() {
     return pages;
   };
 
-  // ── Source pill counts (based on current search+period, not srcFilter) ───
+  // ── Source pill counts ─────────────────────────────────────────────────
   const sourceCounts = useMemo(() => {
     const [pFrom, pTo] = getPeriodRange(period, customFrom, customTo);
     const map: Record<string, number> = { all: 0 };
@@ -197,7 +233,7 @@ export default function RespondentsPage() {
             </button>
           </div>
 
-          {/* Period dropdown-style button (opens the pills below) */}
+          {/* Period toggle */}
           <button
             onClick={() => setPeriod(period === "all" ? "today" : "all")}
             className={cn(
@@ -215,10 +251,9 @@ export default function RespondentsPage() {
         </div>
       </div>
 
-      {/* ── Filter row: search + source pills ───────────────────────────── */}
+      {/* ── Filter row ────────────────────────────────────────────────── */}
       <Card className="p-3 border border-border shadow-none">
         <div className="flex flex-col gap-2.5">
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={13} />
             <Input
@@ -229,7 +264,6 @@ export default function RespondentsPage() {
             />
           </div>
 
-          {/* Period pills (only visible when non-all) */}
           {period !== "all" && (
             <div className="flex flex-wrap gap-1.5 pb-2 border-b border-border/60">
               {(["all", "today", "this_week", "this_month", "custom"] as Period[]).map((p) => (
@@ -314,7 +348,6 @@ export default function RespondentsPage() {
       ) : (
         <>
         <Card className="border border-border shadow-none overflow-hidden">
-          {/* Column headers */}
           <div className="grid grid-cols-[minmax(220px,2fr)_minmax(140px,1fr)_minmax(160px,1fr)_120px_80px_120px_28px] gap-3 px-4 py-2.5 bg-muted/40 border-b border-border">
             <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Name</div>
             <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Phone</div>
@@ -325,7 +358,6 @@ export default function RespondentsPage() {
             <div />
           </div>
 
-          {/* Rows */}
           {paginatedRespondents.map((r: any) => {
             const c = colorOf(r.fullName ?? "?");
             const initial = (r.fullName ?? "?").trim().charAt(0).toUpperCase();
@@ -340,7 +372,6 @@ export default function RespondentsPage() {
                 href={`/dashboard/respondents/${r.respondentId}`}
                 className="grid grid-cols-[minmax(220px,2fr)_minmax(140px,1fr)_minmax(160px,1fr)_120px_80px_120px_28px] gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-muted/30 transition-colors group items-center"
               >
-                {/* Name + avatar */}
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0", c.bg, c.text)}>
                     {initial}
@@ -350,7 +381,6 @@ export default function RespondentsPage() {
                   </p>
                 </div>
 
-                {/* Phone */}
                 <div className="text-xs text-muted-foreground truncate">
                   {phone ? (
                     <span className="flex items-center gap-1"><Phone size={10} />{phone}</span>
@@ -359,7 +389,6 @@ export default function RespondentsPage() {
                   )}
                 </div>
 
-                {/* Email */}
                 <div className="text-xs text-muted-foreground truncate">
                   {email ? (
                     <span className="flex items-center gap-1"><Mail size={10} />{email}</span>
@@ -368,7 +397,6 @@ export default function RespondentsPage() {
                   )}
                 </div>
 
-                {/* Lead Source */}
                 <div className="text-xs">
                   {r.leadSource ? (
                     <span className="text-primary capitalize">{r.leadSource}</span>
@@ -377,7 +405,6 @@ export default function RespondentsPage() {
                   )}
                 </div>
 
-                {/* Tickets */}
                 <div className="text-xs text-foreground font-medium">
                   {ticketCount > 0 ? (
                     <span className="flex items-center gap-1"><TicketIcon size={10} className="text-muted-foreground" />{ticketCount}</span>
@@ -386,14 +413,12 @@ export default function RespondentsPage() {
                   )}
                 </div>
 
-                {/* First Contact */}
                 <div className="text-xs text-muted-foreground whitespace-nowrap">
                   {fcd
                     ? fcd.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })
                     : <span className="text-muted-foreground/40">—</span>}
                 </div>
 
-                {/* Arrow */}
                 <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
               </Link>
             );

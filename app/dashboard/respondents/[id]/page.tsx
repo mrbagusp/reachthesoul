@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   ChevronLeft, Phone, Mail, Globe, StickyNote, Plus, Pencil,
   Ticket, Check, X, ChevronDown, ChevronUp, Lock, MessageSquare,
@@ -72,6 +72,7 @@ function TicketMessages({ ticketId }: { ticketId: string }) {
 
 export default function RespondentProfilePage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const id = params.id;
   const currentUser = useAuthStore((s) => s.currentUser);
 
@@ -248,9 +249,9 @@ export default function RespondentProfilePage() {
     <div className="flex flex-col gap-5 max-w-5xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2">
-        <Link href="/dashboard/respondents" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+        <button onClick={() => router.back()} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
           <ChevronLeft size={14} />Respondents
-        </Link>
+        </button>
         <span className="text-muted-foreground/40 text-xs">/</span>
         <span className="text-xs text-foreground font-medium">{respondent.fullName}</span>
       </div>
