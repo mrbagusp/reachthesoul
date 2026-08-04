@@ -31,6 +31,7 @@ export { createCampaign, processCampaignQueue, processCampaignQueueScheduled } f
 
 // Facebook / Instagram OAuth "Connect" flow
 export { fbConnectStart, fbConnectCallback } from "./facebook-oauth";
+export { checkSocialAccountTokenHealth } from "./token-health-check";
 
 // Set region to asia-southeast1 (Singapore) — closest to Indonesia
 setGlobalOptions({ region: "asia-southeast1" });
@@ -112,17 +113,17 @@ async function getOutboundCredentials(
   ticket: Record<string, any>,
   orgId: string
 ): Promise<{ account: SocialAccountDoc | null; config: Record<string, any> }> {
+  // Always load org channelConfig (used as fallback for credentials)
+  const config = orgId ? await getChannelConfig(orgId) : {};
   // Try social_accounts first (via ticket.socialAccountId)
   if (ticket.socialAccountId) {
     const account = await getSocialAccountById(ticket.socialAccountId, orgId);
-    if (account) return { account, config: {} };
+    if (account) return { account, config };
   }
-  // Fallback to organization channelConfig
   if (!orgId) {
     logger.warn("[getOutboundCredentials] No socialAccountId and no orgId — cannot get credentials");
     return { account: null, config: {} };
   }
-  const config = await getChannelConfig(orgId);
   return { account: null, config };
 }
 
@@ -164,8 +165,24 @@ export const onMessageCreated = onDocumentCreated(
       // Get credentials — social_accounts first, fallback to org config
       const { account, config } = await getOutboundCredentials(ticket, orgId);
 
-      // ── Send via Fonnte (WhatsApp) ──
-      if (channel === "whatsapp_fonnte" || channel === "manual" ||
+      // ── Send via Meta WhatsApp Cloud API (check FIRST) ──
+      if (channel === "whatsapp_meta") {
+        const waToken = account?.credentials?.accessToken ?? config.meta_access_token ?? config.whatsapp_access_token ?? "";
+        const waPhoneId = account?.credentials?.phoneNumberId ?? config.meta_phone_number_id ?? config.whatsapp_phone_number_id ?? "";
+        if (!waToken || !waPhoneId) { logger.warn("[onMessageCreated] Meta WA credentials not configured"); return; }
+
+        const cleanPhone = phone.replace(/^\+/, "");
+        const response = await fetch(`https://graph.facebook.com/v21.0/${waPhoneId}/messages`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${waToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ messaging_product: "whatsapp", to: cleanPhone, type: "text", text: { body: message.content } }),
+        });
+        const result = await response.json();
+        logger.info(`[onMessageCreated] Meta WA → ${cleanPhone}:`, JSON.stringify(result));
+      }
+
+      // ── Send via Fonnte (WhatsApp) — fallback ──
+      else if (channel === "whatsapp_fonnte" || channel === "manual" ||
           config.active_whatsapp_provider === "fonnte") {
         const token = account?.credentials?.token ?? config.fonnte_token ?? "";
         if (!token) { logger.warn("[onMessageCreated] Fonnte token not configured"); return; }
@@ -179,23 +196,6 @@ export const onMessageCreated = onDocumentCreated(
         const result = await response.json();
         logger.info(`[onMessageCreated] Fonnte → ${cleanPhone}:`, JSON.stringify(result));
       }
-
-      // ── Send via Meta WhatsApp Cloud API ──
-      else if (channel === "whatsapp_meta" || config.active_whatsapp_provider === "meta") {
-        const waToken = account?.credentials?.accessToken ?? config.whatsapp_access_token ?? "";
-        const waPhoneId = account?.credentials?.phoneNumberId ?? config.whatsapp_phone_number_id ?? "";
-        if (!waToken || !waPhoneId) { logger.warn("[onMessageCreated] Meta WA credentials not configured"); return; }
-
-        const cleanPhone = phone.replace(/^\+/, "");
-        const response = await fetch(`https://graph.facebook.com/v18.0/${waPhoneId}/messages`, {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${waToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ messaging_product: "whatsapp", to: cleanPhone, type: "text", text: { body: message.content } }),
-        });
-        const result = await response.json();
-        logger.info(`[onMessageCreated] Meta WA → ${cleanPhone}:`, JSON.stringify(result));
-      }
-
       // ── Facebook Messenger ──
       else if (channel === "facebook") {
         const fbToken = account?.credentials?.pageAccessToken ?? config.facebook_page_access_token ?? "";
@@ -312,6 +312,7 @@ export const webhookFonnte = onRequest({ cors: true }, async (req, res) => {
 
   try {
     const body = req.body;
+    logger.info(`[webhookFonnte] RAW BODY: ${JSON.stringify(body).substring(0, 500)}`);
     const sender = String(body.sender ?? "").replace(/\D/g, "");
     const phone = sender.startsWith("+") ? sender : `+${sender}`;
     const name = String(body.name ?? phone);
