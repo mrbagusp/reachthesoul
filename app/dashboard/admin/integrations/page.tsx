@@ -282,7 +282,7 @@ export default function IntegrationsPage() {
                     type="text"
                     value={fonnteDeviceNumber}
                     onChange={(e) => setFonnteDeviceNumber(e.target.value)}
-                    placeholder="e.g. 6285974773341 (without +)"
+                    placeholder="e.g. 6285217971464 (without +)"
                     className="h-8 text-xs font-mono"
                   />
                   <p className="text-[9px] text-green-600 mt-1">This is used to prevent AI from replying to its own messages (loop prevention).</p>

@@ -334,7 +334,7 @@ export default function BillingPage() {
             Need custom configuration, white-label, or a reseller partnership?{" "}
             <a href="mailto:hello@reachthesoul.org?subject=Custom%20Configuration%20Inquiry" className="text-primary font-medium hover:underline">Contact us</a>
             {" "}or{" "}
-            <a href="https://wa.me/6285974773341?text=Hi%2C%20I%27m%20interested%20in%20custom%20configuration%20for%20ReachTheSoul" target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">WhatsApp us</a>
+            <a href="https://wa.me/6285217971464?text=Hi%2C%20I%27m%20interested%20in%20custom%20configuration%20for%20ReachTheSoul" target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">WhatsApp us</a>
           </p>
         </div>
       </div>

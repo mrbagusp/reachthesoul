@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
@@ -105,15 +105,11 @@ export default function TicketsPage() {
   const [view, setView]                   = useState<"list" | "kanban">("list");
 
   // ── URL-based pagination ─────────────────────────────────────────────────
-  // Read current page from URL (?page=N). Falls back to 1 if missing/invalid.
-  // Using URL as source of truth means browser Back/Forward buttons restore
-  // the page correctly, and users can bookmark/share specific pages.
   const currentPage = useMemo(() => {
     const p = parseInt(searchParams.get("page") ?? "1", 10);
     return Number.isFinite(p) && p >= 1 ? p : 1;
   }, [searchParams]);
 
-  // Update URL when user changes page (without full navigation reload)
   const setCurrentPage = useCallback(
     (page: number | ((prev: number) => number)) => {
       const nextPage = typeof page === "function" ? page(currentPage) : page;
@@ -207,18 +203,34 @@ export default function TicketsPage() {
     return filtered.slice(start, start + TICKETS_PER_PAGE);
   }, [filtered, currentPage]);
 
-  // Reset to page 1 when filters change (except on first mount / URL restore)
+  // ── Reset to page 1 when filters CHANGE (compare snapshot, not just re-runs) ──
+  // We track a "signature" of all filter values. Only reset when the signature
+  // actually changes. Re-mounts and re-renders with same filter values won't
+  // trigger a reset — so back button after ticket detail navigation preserves the URL page.
+  const filterSignature = `${search}|${statusFilter}|${priorityFilter}|${programFilter}|${period}|${customFrom}|${customTo}`;
+  const prevFilterSignature = useRef<string | null>(null);
   useEffect(() => {
-    setCurrentPage(1);
+    if (prevFilterSignature.current === null) {
+      // First render: just record the signature, don't reset.
+      prevFilterSignature.current = filterSignature;
+      return;
+    }
+    if (prevFilterSignature.current !== filterSignature) {
+      // Signature changed: user actually modified a filter — reset to page 1.
+      prevFilterSignature.current = filterSignature;
+      setCurrentPage(1);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, statusFilter, priorityFilter, programFilter, period, customFrom, customTo]);
+  }, [filterSignature]);
 
-  // Clamp currentPage if it exceeds totalPages
+  // Clamp currentPage if it exceeds totalPages — but skip when data isn't loaded yet,
+  // otherwise we'd clamp to page 1 during initial mount before Firestore data arrives.
   useEffect(() => {
+    if (filtered.length === 0) return;
     if (currentPage > totalPages) setCurrentPage(totalPages);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalPages]);
-
+  }, [totalPages, filtered.length]);
+  
   const rangeStart = filtered.length === 0 ? 0 : (currentPage - 1) * TICKETS_PER_PAGE + 1;
   const rangeEnd   = Math.min(currentPage * TICKETS_PER_PAGE, filtered.length);
 
@@ -628,7 +640,7 @@ export default function TicketsPage() {
                           )}
                         </td>
                         <td className="px-3 py-3">
-                          <Link href={`/dashboard/tickets/${ticket.ticketId}${currentPage > 1 ? `?returnPage=${currentPage}` : ""}`}>
+                          <Link href={`/dashboard/tickets/${ticket.ticketId}`}>
                             <ChevronRight size={14} className="text-muted-foreground group-hover:text-primary transition-colors" />
                           </Link>
                         </td>
