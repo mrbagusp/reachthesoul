@@ -452,7 +452,17 @@ export const webhookInstagram = onRequest({ cors: true, secrets: ["META_APP_SECR
 
     for (const event of messaging as any[]) {
       if (!event.message?.text) continue;
+      // ── Guard: skip echo (pesan yang akun kita sendiri kirim) ──
+      if (event.message?.is_echo === true) {
+        logger.info("[webhookInstagram] Skipping echo message");
+        continue;
+      }
       const senderId = String(event.sender?.id ?? "");
+      // Jaring pengaman: kalau pengirim = akun IG kita sendiri, skip
+      if (senderId === igAccountId) {
+        logger.info("[webhookInstagram] Skipping own message (sender === igAccountId)");
+        continue;
+      }
 
       // NEW: Fetch real IG user name instead of hardcoded "Instagram User XXXX"
       const senderName = igToken
@@ -520,7 +530,17 @@ export const webhookFacebook = onRequest({ cors: true, secrets: ["META_APP_SECRE
 
     for (const event of messaging as any[]) {
       if (!event.message?.text) continue;
+      // ── Guard: skip echo (pesan yang Page kita sendiri kirim) ──
+      if (event.message?.is_echo === true) {
+        logger.info("[webhookFacebook] Skipping echo message");
+        continue;
+      }
       const senderId = String(event.sender?.id ?? "");
+      // Jaring pengaman: kalau pengirim = Page kita sendiri, skip
+      if (senderId === pageId) {
+        logger.info("[webhookFacebook] Skipping own message (sender === pageId)");
+        continue;
+      }
 
       // NEW: Fetch real FB user name instead of hardcoded "Facebook User XXXX"
       const senderName = pageToken

@@ -46,6 +46,7 @@ const navItems: NavItem[] = [
       { label: "Progress Steps", href: "/dashboard/admin/progress-steps", icon: ListOrdered },
       { label: "Integrations", href: "/dashboard/admin/integrations",    icon: Plug },
       { label: "Social Accounts", href: "/dashboard/admin/social-accounts", icon: Share2 },
+      { label: "WhatsApp Templates", href: "/dashboard/admin/whatsapp-templates", icon: MessageSquare },
       { label: "Chat Widget",  href: "/dashboard/admin/widget",          icon: MessageSquare },
       { label: "AI Settings",  href: "/dashboard/admin/ai-settings",    icon: Bot },
       { label: "Call Settings", href: "/dashboard/admin/call-settings", icon: PhoneCall },
