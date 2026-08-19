@@ -3,14 +3,22 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: {
-    default: 'ReachTheSoul — Prayer & Counseling Software for Churches & Ministries',
+    default: 'ReachTheSoul — Prayer & Counseling CRM that Follows Every Soul from First Message to Lasting Faith',
     template: '%s | ReachTheSoul',
   },
-  description: 'Make sure no prayer request, counseling need, or faith decision goes unanswered. ReachTheSoul is a prayer and counseling CRM with an omnichannel inbox — WhatsApp, Instagram, Facebook, website chat, and voice calls — with 24/7 AI first response and human counselor escalation. Built for churches and ministries of any size.',
+  description: 'Make sure no prayer request, counseling need, or faith decision goes unanswered. ReachTheSoul is a prayer and counseling CRM with an omnichannel inbox — WhatsApp, Instagram, Facebook, website chat, and voice calls — with 24/7 AI first response and human counselor escalation. Then track each person\'s journey from first message through prayer, counseling, and spiritual growth, so no one is followed up once and forgotten. Built for churches and ministries of any size.',
   other: {
     'facebook-domain-verification': '9qqpzy8cg5bd70dh0mpvyhvjaxnpr0',
   },
   keywords: [
+    // Journey & discipleship — THE differentiator (what makes RTS unique)
+    'pastoral care journey tracking', 'discipleship journey software',
+    'soul journey tracking', 'faith journey follow up', 'new believer follow up',
+    'discipleship tracking software', 'spiritual growth tracking',
+    'salvation follow up', 'convert follow up software',
+    'from first contact to discipleship', 'measure ministry outcomes',
+    'ministry impact tracking', 'soul winning follow up', 'new convert care',
+
     // Primary — function-centered (what it IS, works for church AND ministry)
     'prayer and counseling software', 'prayer and counseling CRM', 'prayer and counseling platform',
     'prayer request management software', 'prayer center software', 'prayer center tool',
@@ -26,7 +34,7 @@ export const metadata: Metadata = {
     'omnichannel prayer inbox', 'prayer and counseling software WhatsApp',
     'prayer software with omnichannel call and whatsapp', 'church WhatsApp integration',
     'AI prayer response', 'automated prayer response', 'AI church counseling', 'AI pastoral care',
-    'church omnichannel inbox', 'church chatbot', 'WhatsApp ministry',
+    'church omnichannel inbox', 'WhatsApp ministry',
 
     // Ministry / evangelism language (reaches media + evangelistic ministries, not just churches)
     'ministry response platform', 'digital evangelism tools', 'evangelism follow up software',
@@ -63,8 +71,8 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://reachthesoul.org',
     siteName: 'ReachTheSoul',
-    title: 'ReachTheSoul — Every Prayer Heard. Every Soul Cared For.',
-    description: 'Prayer and counseling CRM for churches and ministries. Respond to every prayer request 24/7 with AI first response and seamless human counselor escalation. Omnichannel inbox — WhatsApp, Instagram, Facebook, website chat, and voice calls.',
+    title: 'ReachTheSoul — Every Prayer Heard. Every Soul Followed Home.',
+    description: 'From first message to lasting faith — track every soul\'s journey. Prayer and counseling CRM for churches and ministries: omnichannel inbox (WhatsApp, Instagram, Facebook, website chat, voice calls), 24/7 AI first response, counseling journal, ministry progress steps, and follow-up that never forgets.',
     images: [
       {
         url: '/og-image.png',
@@ -76,8 +84,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ReachTheSoul — Every Prayer Heard. Every Soul Cared For.',
-    description: 'Prayer and counseling CRM for churches and ministries. 24/7 AI first response, omnichannel inbox (WhatsApp + Instagram + Facebook + calls), counseling journal.',
+    title: 'ReachTheSoul — Every Prayer Heard. Every Soul Followed Home.',
+    description: 'Track every soul from first message to lasting faith. Prayer & counseling CRM: omnichannel inbox (WhatsApp + Instagram + Facebook + calls), 24/7 AI first response, counseling journal, discipleship follow-up.',
     images: ['/og-image.png'],
     creator: '@reachthesoul',
   },
@@ -118,8 +126,8 @@ export default function RootLayout({
         "@type": "SoftwareApplication",
         "name": "ReachTheSoul",
         "applicationCategory": "BusinessApplication",
-        "applicationSubCategory": "Prayer & Counseling CRM",
-        "description": "Prayer and counseling CRM for churches and ministries. Make sure no prayer request, counseling need, or faith decision goes unanswered — with an omnichannel inbox (WhatsApp, Instagram, Facebook, website chat, voice calls), 24/7 AI first response, and seamless human counselor escalation.",
+        "applicationSubCategory": "Prayer, Counseling & Discipleship Journey CRM",
+        "description": "Prayer and counseling CRM for churches and ministries. Make sure no prayer request, counseling need, or faith decision goes unanswered — with an omnichannel inbox (WhatsApp, Instagram, Facebook, website chat, voice calls), 24/7 AI first response, and seamless human counselor escalation. Then follow each person's journey from first message through prayer, counseling, and spiritual growth — so no one is followed up once and forgotten.",
         "url": "https://reachthesoul.org",
         "operatingSystem": "Web",
         "offers": [
@@ -128,7 +136,7 @@ export default function RootLayout({
           { "@type": "Offer", "name": "Growth", "price": "97", "priceCurrency": "USD", "description": "Omnichannel + advanced AI, 15 users, 2000 respondents" },
           { "@type": "Offer", "name": "Enterprise", "price": "249", "priceCurrency": "USD", "description": "Unlimited users, all channels, dedicated support" },
         ],
-        "featureList": "AI Auto-Reply, Omnichannel Inbox, WhatsApp Integration, Instagram DM, Facebook Messenger, Website Chat, Voice Call Integration, Counseling Journal, Crisis Detection, Prayer Follow-up, Team Management",
+        "featureList": "Soul Journey Tracking, Counseling Journal, Discipleship Follow-up, Ministry Progress Steps, Outcome Tracking, Omnichannel Inbox, WhatsApp Integration, Instagram DM, Facebook Messenger, Website Chat, Voice Call Integration, 24/7 AI First Response, Crisis Detection, Human Counselor Escalation, Prayer Follow-up, Team Management",
       },
       {
         "@type": "Organization",
@@ -149,6 +157,22 @@ export default function RootLayout({
       {
         "@type": "FAQPage",
         "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Can I track a person's journey from first contact to salvation?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes — this is what sets ReachTheSoul apart from a simple chatbot. Every person becomes a respondent profile with a full history: every conversation across every channel, a counseling journal, and ministry progress steps (from first contact through prayer, counseling, recommitment, salvation, and beyond). You see not just what was said, but where each soul is on their journey — and what follow-up they still need."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How is ReachTheSoul different from a church chatbot or shared inbox?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "A chatbot answers a message and forgets it. A shared inbox routes conversations but loses the person once the chat closes. ReachTheSoul records the whole journey: it links every conversation to one person over time, tracks their spiritual progress and outcomes, and makes sure follow-up actually happens. It's the difference between answering messages and discipling people."
+            }
+          },
           {
             "@type": "Question",
             "name": "What is a prayer and counseling CRM?",

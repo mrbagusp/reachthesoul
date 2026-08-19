@@ -49,6 +49,27 @@ const CHANNEL_LEAD_SOURCE: Record<Channel, string> = {
   call:            "Telepon",
 };
 
+// ── Respondent identity helpers (dedup fix) ─────────────────────────────────
+// Normalize a sender ID into a canonical key for respondent matching.
+// WhatsApp: strip ALL non-digits so "+628...", "628...", "0812..." with spaces
+//   or dashes all collapse to the same digits. NOTE: prefix is NOT rewritten
+//   (no 0→62) so international numbers (Ghana, etc.) stay intact.
+// FB/IG/call: PSID / number is already stable — keep as-is (trimmed).
+function normalizeSenderKey(channel: Channel, senderId: string): string {
+  const raw = String(senderId ?? "").trim();
+  if (channel === "whatsapp_meta" || channel === "whatsapp_fonnte") {
+    return raw.replace(/\D/g, "");
+  }
+  return raw;
+}
+
+// WhatsApp via any provider (meta or fonnte) is the SAME channel family —
+// same person, same number. Used so a respondent isn't split across providers.
+function channelFamily(channel: Channel): string {
+  if (channel === "whatsapp_meta" || channel === "whatsapp_fonnte") return "whatsapp";
+  return channel;
+}
+
 async function getLeadSourceId(name: string, orgId: string): Promise<string> {
   const db = getDb();
   const snap = await db.collection("lead_sources")
@@ -140,23 +161,47 @@ export async function processIncomingMessage(data: IncomingMessage) {
   const db = getDb();
   const { orgId } = data;
 
-  // 1. Upsert respondent — scoped to org
+  // 1. Upsert respondent — scoped to org, matched by NORMALIZED sender key.
+  //    This collapses duplicates caused by phone-number format differences
+  //    (+628 vs 628) and by the same person arriving via different WhatsApp
+  //    providers (meta vs fonnte).
   const respondentsRef = db.collection("respondents");
-  const existing = await respondentsRef
+  const senderKey = normalizeSenderKey(data.channel, data.senderId);
+  const family = channelFamily(data.channel);
+
+  let existingDoc: admin.firestore.QueryDocumentSnapshot | null = null;
+
+  // Primary match: senderKey + channelFamily.
+  const byKey = await respondentsRef
     .where("orgId", "==", orgId)
-    .where("channelSenderId", "==", data.senderId)
-    .where("channel", "==", data.channel)
+    .where("senderKey", "==", senderKey)
+    .where("channelFamily", "==", family)
     .limit(1).get();
+
+  if (!byKey.empty) {
+    existingDoc = byKey.docs[0];
+  } else {
+    // Fallback for legacy respondents created before senderKey existed:
+    // match the raw channelSenderId, then backfill the new fields below.
+    const legacy = await respondentsRef
+      .where("orgId", "==", orgId)
+      .where("channelSenderId", "==", data.senderId)
+      .limit(1).get();
+    if (!legacy.empty) existingDoc = legacy.docs[0];
+  }
 
   let respondentId: string;
   let respondentName: string = data.senderName;
 
-  if (!existing.empty) {
-    respondentId = existing.docs[0].id;
-    respondentName = existing.docs[0].data().fullName ?? data.senderName;
+  if (existingDoc) {
+    respondentId = existingDoc.id;
+    respondentName = existingDoc.data().fullName ?? data.senderName;
     const updatePayload: Record<string, any> = {
       fullName: data.senderName,
       ...(data.senderPhone ? { phone: data.senderPhone } : {}),
+      // Backfill identity fields for legacy docs (idempotent for new ones).
+      senderKey,
+      channelFamily: family,
       updatedAt: FieldValue.serverTimestamp(),
     };
     // Track which accounts this respondent has interacted with (360° view)
@@ -176,6 +221,8 @@ export async function processIncomingMessage(data: IncomingMessage) {
       phone: data.senderPhone ?? null,
       channel: data.channel,
       channelSenderId: data.senderId,
+      senderKey,               // NEW — normalized identity key
+      channelFamily: family,   // NEW — provider-agnostic channel family
       leadSourceId,
       isArchived: false,
       notes: null,

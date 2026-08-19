@@ -417,7 +417,7 @@ const BODY = `
   <div class="container">
     <div class="how-header">
       <h2>How it works</h2>
-      <p>From incoming message to pastoral care — in three simple steps.</p>
+      <p>From the first message to a growing disciple — the full journey, one system.</p>
     </div>
     <div class="how-steps">
       <div class="how-step fade-up">
@@ -433,8 +433,8 @@ const BODY = `
         <p>When prayer, deeper counseling, or a personal visit is needed, the system seamlessly connects the person with your human team. The counselor sees full context — no awkward re-explanations.</p>
       </div>
       <div class="how-step fade-up">
-        <h3>Follow-up, always</h3>
-        <p>No one is forgotten. The system tracks progress, schedules follow-ups, and ensures every soul receives ongoing care — from first prayer to faithful community member.</p>
+        <h3>The journey continues</h3>
+        <p>Care doesn't end at follow-up. ReachTheSoul records each outcome — recommitment, salvation, baptism, discipleship — and tracks every soul's growth over time. You see exactly where each person is on their journey, and the next step to take.</p>
       </div>
     </div>
   </div>
