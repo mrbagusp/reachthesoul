@@ -343,8 +343,8 @@ const BODY = `
 <section class="pain">
   <div class="container">
     <div class="pain-header">
-      <h2>The crisis most churches don't talk about</h2>
-      <p>Your church receives dozens of prayer requests and counseling messages every week. How many actually get a response?</p>
+      <h2>The crisis most ministries don't talk about</h2> 
+      <p>Every week, churches, ministries, and mission organizations receive dozens of prayer requests, seeker questions, and counseling messages. How many actually get a response — and how many are walked all the way to faith?</p>
     </div>
     <div class="pain-grid">
       <div class="pain-card fade-up">
@@ -374,9 +374,8 @@ const BODY = `
   <div class="container">
     <div class="solution-header">
       <div class="badge">✨ The Solution</div>
-      <h2>A platform built for prayer, not paperwork</h2>
-      <p>ReachTheSoul gives your prayer and counseling team superpowers — without replacing the human touch that makes ministry meaningful.</p>
-    </div>
+      <h2>A platform built for the journey, not paperwork</h2>
+  <p>ReachTheSoul gives churches, ministries, and mission organizations one place to walk each soul from their first prayer to lasting faith — whether you're a small church or a media ministry handling thousands of responses, without replacing the human touch that makes ministry meaningful.</p>    </div>
     <div class="features">
       <div class="feature-card fc-teal fade-up">
         <div class="icon">🤖</div>
