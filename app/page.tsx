@@ -60,7 +60,7 @@ const STYLES = `
     .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 28px; border-radius: 10px; font-weight: 600; font-size: 15px; font-family: var(--font-body); border: none; cursor: pointer; transition: all 0.2s; }
     .btn-primary { background: var(--teal); color: var(--navy); }
     .btn-primary:hover { background: var(--teal-dark); transform: translateY(-1px); box-shadow: 0 8px 25px rgba(45,212,191,0.3); }
-    .btn-outline { background: transparent; color: var(--white); border: 1.5px solid rgba(255,255,255,0.3); }
+    .btn-outline { background: transparent; color: var(--navy); border: 1.5px solid var(--gray-300); }
     .btn-outline:hover { border-color: var(--teal); color: var(--teal); }
     .btn-dark { background: var(--navy); color: var(--white); }
     .btn-dark:hover { background: var(--navy-light); transform: translateY(-1px); box-shadow: 0 8px 25px rgba(15,27,45,0.3); }
@@ -68,39 +68,39 @@ const STYLES = `
 
     /* ── NAV ── */
     nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 16px 0; transition: all 0.3s; }
-    nav.scrolled { background: rgba(15,27,45,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.08); }
+    nav.scrolled { background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--gray-200); }
     .nav-inner { display: flex; align-items: center; justify-content: space-between; }
     .nav-logo { display: flex; align-items: center; gap: 10px; }
     .nav-logo-icon { width: 36px; height: 36px; background: var(--navy-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
     .nav-logo-icon::before { content: ''; position: absolute; left: 6px; top: 25%; bottom: 25%; width: 3px; background: var(--teal); border-radius: 2px; }
     .nav-logo-icon span { font-family: var(--font-body); font-weight: 700; font-size: 12px; color: var(--white); letter-spacing: 0.5px; margin-left: 2px; }
-    .nav-logo-text { font-family: var(--font-display); font-size: 18px; color: var(--white); }
+    .nav-logo-text { font-family: var(--font-display); font-size: 18px; color: var(--navy); }
     .nav-links { display: flex; align-items: center; gap: 32px; }
-    .nav-links a { color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 500; transition: color 0.2s; }
-    .nav-links a:hover { color: var(--white); }
+    .nav-links a { color: var(--gray-600); font-size: 14px; font-weight: 500; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--navy); }
     .nav-cta { display: flex; gap: 10px; align-items: center; }
     .nav-cta .btn { padding: 10px 20px; font-size: 13px; }
     @media (max-width: 768px) { .nav-links { display: none; } }
 
     /* ── HERO ── */
-    .hero { background: linear-gradient(165deg, var(--navy) 0%, var(--navy-light) 50%, var(--navy-lighter) 100%); padding: 160px 0 100px; position: relative; overflow: hidden; }
-    .hero::before { content: ''; position: absolute; top: -50%; right: -20%; width: 800px; height: 800px; background: radial-gradient(circle, rgba(45,212,191,0.08) 0%, transparent 70%); pointer-events: none; }
-    .hero::after { content: ''; position: absolute; bottom: -30%; left: -10%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(245,158,11,0.05) 0%, transparent 70%); pointer-events: none; }
+    .hero { background: linear-gradient(165deg, #FFFFFF 0%, #F4FBFA 55%, #EAF7F5 100%); padding: 160px 0 100px; position: relative; overflow: hidden; }
+    .hero::before { content: ''; position: absolute; top: -50%; right: -20%; width: 800px; height: 800px; background: radial-gradient(circle, rgba(45,212,191,0.12) 0%, transparent 70%); pointer-events: none; }
+    .hero::after { content: ''; position: absolute; bottom: -30%; left: -10%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 70%); pointer-events: none; }
     .hero-content { position: relative; z-index: 2; max-width: 720px; }
     .hero .badge { background: rgba(45,212,191,0.15); color: var(--teal); border: 1px solid rgba(45,212,191,0.25); margin-bottom: 28px; }
-    .hero h1 { font-family: var(--font-display); font-size: clamp(36px, 5.5vw, 64px); color: var(--white); line-height: 1.15; margin-bottom: 24px; }
-    .hero h1 em { font-style: normal; color: var(--teal); }
-    .hero .tagline { font-size: 14px; color: var(--teal); font-weight: 600; letter-spacing: 0.3px; margin-bottom: 12px; }
-    .hero p.sub { font-size: 18px; color: rgba(255,255,255,0.6); line-height: 1.7; margin-bottom: 36px; max-width: 560px; }
+    .hero h1 { font-family: var(--font-display); font-size: clamp(36px, 5.5vw, 64px); color: var(--navy); line-height: 1.15; margin-bottom: 24px; }
+    .hero h1 em { font-style: normal; color: var(--teal-dark); }
+    .hero .tagline { font-size: 14px; color: var(--teal-dark); font-weight: 600; letter-spacing: 0.3px; margin-bottom: 12px; }
+    .hero p.sub { font-size: 18px; color: var(--gray-600); line-height: 1.7; margin-bottom: 36px; max-width: 560px; }
     .hero-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
-    .hero-stats { display: flex; gap: 48px; margin-top: 64px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .hero-stats { display: flex; gap: 48px; margin-top: 64px; padding-top: 40px; border-top: 1px solid var(--gray-200); }
     .hero-stat { text-align: left; }
-    .hero-stat .num { font-family: var(--font-display); font-size: 36px; color: var(--teal); }
-    .hero-stat .label { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+    .hero-stat .num { font-family: var(--font-display); font-size: 36px; color: var(--teal-dark); }
+    .hero-stat .label { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
     @media (max-width: 640px) { .hero-stats { gap: 24px; } .hero-stat .num { font-size: 28px; } }
 
     /* ── CHANNELS STRIP ── */
-    .channels { background: var(--navy); padding: 40px 0 48px; border-top: 1px solid rgba(255,255,255,0.06); }
+    .channels { background: linear-gradient(135deg, #1E3A5F 0%, #24466E 100%); padding: 48px 0 52px; border-top: none; }
     .channels-label { text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 28px; }
     .channels-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; max-width: 900px; margin: 0 auto; }
     .channel-chip { display: inline-flex; align-items: center; gap: 9px; padding: 11px 18px; border-radius: 100px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); font-size: 14px; font-weight: 600; transition: all 0.2s; }
@@ -283,9 +283,9 @@ const BODY = `
 <!-- HERO -->
 <section class="hero">
   <div class="container hero-content">
-    <div class="badge">🙏 Prayer & Counseling Platform</div>
-    <p class="tagline">Helping churches and ministries respond 24/7 in a minute — without losing the human touch.</p>
-    <h1>Every prayer <em>heard</em>.<br />Every soul <em>cared for</em>.</h1>
+    <div class="badge">🙏 Prayer, Counseling & Discipleship Journey Platform</div>
+    <p class="tagline">From the first message to lasting faith — every soul followed, none forgotten.</p>
+    <h1>Every prayer <em>heard</em>.<br />Every soul <em>followed home</em>.</h1>
     <p class="sub">Someone just messaged your church at 2 AM: <em>"I can't do this anymore."</em> Who responds? ReachTheSoul ensures no message goes unanswered — with AI that provides immediate care and empathy, and seamless escalation to human counselors for prayer, deeper counseling, or urgent visits.</p>
     <div class="hero-buttons">
       <a href="/register" class="btn btn-primary">Start Free — No Credit Card →</a>
@@ -294,7 +294,7 @@ const BODY = `
     <div class="hero-stats">
       <div class="hero-stat"><div class="num">24/7</div><div class="label">AI First Response</div></div>
       <div class="hero-stat"><div class="num">&lt; 1 min</div><div class="label">AI Response Time</div></div>
-      <div class="hero-stat"><div class="num">100%</div><div class="label">Follow-up Rate</div></div>
+      <div class="hero-stat"><div class="num">Every</div><div class="label">Soul's Journey Tracked</div></div>
     </div>
   </div>
 </section>
@@ -343,7 +343,7 @@ const BODY = `
 <section class="pain">
   <div class="container">
     <div class="pain-header">
-      <h2>The crisis most ministries don't talk about</h2> 
+      <h2>The crisis most ministries don't talk about</h2>
       <p>Every week, churches, ministries, and mission organizations receive dozens of prayer requests, seeker questions, and counseling messages. How many actually get a response — and how many are walked all the way to faith?</p>
     </div>
     <div class="pain-grid">
@@ -374,8 +374,9 @@ const BODY = `
   <div class="container">
     <div class="solution-header">
       <div class="badge">✨ The Solution</div>
-      <h2>A platform built for the journey, not paperwork</h2>
-  <p>ReachTheSoul gives churches, ministries, and mission organizations one place to walk each soul from their first prayer to lasting faith — whether you're a small church or a media ministry handling thousands of responses, without replacing the human touch that makes ministry meaningful.</p>    </div>
+      <h2>Built for the journey, not just the reply</h2>
+      <p>From the first cry for help to a life transformed — ReachTheSoul walks with every soul through prayer, counseling, and discipleship. Whether you're a local church or a media ministry handling thousands of responses a week, reach people at scale without losing the human touch.</p>
+    </div>
     <div class="features">
       <div class="feature-card fc-teal fade-up">
         <div class="icon">🤖</div>
@@ -432,6 +433,10 @@ const BODY = `
         <p>When prayer, deeper counseling, or a personal visit is needed, the system seamlessly connects the person with your human team. The counselor sees full context — no awkward re-explanations.</p>
       </div>
       <div class="how-step fade-up">
+        <h3>Follow-up, always</h3>
+        <p>No one is forgotten. The system tracks progress, schedules follow-ups, and ensures every soul receives ongoing care — from first prayer to faithful community member.</p>
+      </div>
+      <div class="how-step fade-up">
         <h3>The journey continues</h3>
         <p>Care doesn't end at follow-up. ReachTheSoul records each outcome — recommitment, salvation, baptism, discipleship — and tracks every soul's growth over time. You see exactly where each person is on their journey, and the next step to take.</p>
       </div>
@@ -472,17 +477,8 @@ const BODY = `
 <section class="pricing" id="pricing">
   <div class="container">
     <div class="pricing-header">
-      <div class="founding-badge">
-        <svg viewBox="0 0 24 24"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
-        FOUNDING CHURCH PRICING
-      </div>
       <h2>Simple, transparent pricing</h2>
       <p>Start free. Upgrade when you're ready. No contracts, cancel anytime.</p>
-    </div>
-    <div class="founding-notice">
-      <p>
-        <strong>Early Ministry Partner rates.</strong> Churches that join now <em>keep their pricing permanently</em> as founding partners — even after prices increase for new subscribers.
-      </p>
     </div>
     <div class="pricing-grid">
       <div class="price-card">
