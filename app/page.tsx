@@ -276,7 +276,7 @@ const BODY = `
     </div>
     <div class="nav-cta">
       <a href="/login" class="btn btn-outline">Sign In</a>
-      <a href="/register" class="btn btn-primary">Start Free</a>
+      <a href="/register" class="btn btn-primary" onclick="if(window.gtag)gtag('event','start_free_click',{location:'hero'})">Start Free</a>
     </div>
   </div>
 </nav>
@@ -289,7 +289,7 @@ const BODY = `
     <h1>Every prayer <em>heard</em>.<br />Every soul <em>cared for</em>.</h1>
     <p class="sub">Someone just messaged your church at 2 AM: <em>"I can't do this anymore."</em> Who responds? ReachTheSoul ensures no message goes unanswered — with AI that provides immediate care and empathy, and seamless escalation to human counselors for prayer, deeper counseling, or urgent visits.</p>
     <div class="hero-buttons">
-      <a href="/register" class="btn btn-primary">Start Free — No Credit Card →</a>
+      <a href="/register" class="btn btn-primary" onclick="if(window.gtag)gtag('event','start_free_click',{location:'hero_secondary'})">Start Free — No Credit Card →</a>
       <a href="#how" class="btn btn-outline">See How It Works</a>
     </div>
     <div class="hero-stats">
@@ -493,7 +493,7 @@ const BODY = `
           <li>Basic reporting</li>
           <li>All data stored securely</li>
         </ul>
-        <a href="/register" class="btn btn-dark">Get Started Free</a>
+        <a href="/register" class="btn btn-dark" onclick="if(window.gtag)gtag('event','start_free_click',{location:'pricing_free'})">Get Started Free</a>
       </div>
       <div class="price-card">
         <h3>Starter</h3>
@@ -510,7 +510,7 @@ const BODY = `
           <li>Team management</li>
           <li>CSV export</li>
         </ul>
-        <a href="/register" class="btn btn-dark">Start with Starter</a>
+        <a href="/register" class="btn btn-dark" onclick="if(window.gtag)gtag('event','start_free_click',{location:'pricing_starter'})">Start with Starter</a>
       </div>
       <div class="price-card popular">
         <h3>Growth</h3>
@@ -528,7 +528,7 @@ const BODY = `
           <li>Advanced analytics</li>
           <li>Priority support</li>
         </ul>
-        <a href="/register" class="btn btn-primary">Start with Growth</a>
+        <a href="/register" class="btn btn-primary" onclick="if(window.gtag)gtag('event','start_free_click',{location:'pricing_growth'})">Start with Growth</a>
       </div>
       <div class="price-card">
         <h3>Enterprise</h3>
@@ -547,7 +547,7 @@ const BODY = `
           <li>SLA guarantee</li>
           <li>Priority onboarding</li>
         </ul>
-        <a href="/register" class="btn btn-dark">Start with Enterprise</a>
+        <a href="/register" class="btn btn-dark" onclick="if(window.gtag)gtag('event','start_free_click',{location:'pricing_enterprise'})">Start with Enterprise</a>
         <p style="margin-top:8px;font-size:12px;color:#888;">Need custom setup? <a href="mailto:hello@reachthesoul.org" style="color:#2DD4BF;">Contact us</a></p>
       </div>
     </div>
@@ -559,7 +559,7 @@ const BODY = `
   <div class="container">
     <h2>Someone is reaching out<br />right now.</h2>
     <p>Will they find an empty inbox — or a ministry that cares? Start responding to every soul today.</p>
-    <a href="/register" class="btn btn-primary" style="font-size:17px;padding:16px 36px;">Start Free — Takes 2 Minutes →</a>
+    <a href="/register" class="btn btn-primary" style="font-size:17px;padding:16px 36px;" onclick="if(window.gtag)gtag('event','start_free_click',{location:'bottom_cta'})">Start Free — Takes 2 Minutes →</a>
   </div>
 </section>
 
@@ -643,7 +643,7 @@ const BODY = `
           <a href="#features">Features</a>
           <a href="#pricing">Pricing</a>
           <a href="/login">Sign In</a>
-          <a href="/register">Sign Up Free</a>
+          <a href="/register" onclick="if(window.gtag)gtag('event','start_free_click',{location:'footer'})">Sign Up Free</a>
         </div>
         <div>
           <h4>Resources</h4>
