@@ -88,6 +88,7 @@ const STYLES = `
     .hero::after { content: ''; position: absolute; bottom: -30%; left: -10%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 70%); pointer-events: none; }
     .hero-content { position: relative; z-index: 2; max-width: 720px; }
     .hero .badge { background: rgba(45,212,191,0.15); color: var(--teal); border: 1px solid rgba(45,212,191,0.25); margin-bottom: 28px; }
+    .hero .badge-primary { background: var(--teal); color: var(--navy); border: none; font-size: 14px; font-weight: 800; letter-spacing: 0.4px; padding: 10px 20px; box-shadow: 0 4px 14px rgba(45,212,191,0.35); }
     .hero h1 { font-family: var(--font-display); font-size: clamp(36px, 5.5vw, 64px); color: var(--navy); line-height: 1.15; margin-bottom: 24px; }
     .hero h1 em { font-style: normal; color: var(--teal-dark); }
     .hero .tagline { font-size: 14px; color: var(--teal-dark); font-weight: 600; letter-spacing: 0.3px; margin-bottom: 12px; }
@@ -283,9 +284,9 @@ const BODY = `
 <!-- HERO -->
 <section class="hero">
   <div class="container hero-content">
-    <div class="badge">🙏 Prayer, Counseling & Discipleship Journey Platform</div>
-    <p class="tagline">From the first message to lasting faith — every soul followed, none forgotten.</p>
-    <h1>Every prayer <em>heard</em>.<br />Every soul <em>followed home</em>.</h1>
+    <div class="badge badge-primary">🙏 Prayer, Counseling &amp; Discipleship Journey Platform</div>
+    <p class="tagline">Helping churches and ministries respond 24/7 in a minute — without losing the human touch.</p>
+    <h1>Every prayer <em>heard</em>.<br />Every soul <em>cared for</em>.</h1>
     <p class="sub">Someone just messaged your church at 2 AM: <em>"I can't do this anymore."</em> Who responds? ReachTheSoul ensures no message goes unanswered — with AI that provides immediate care and empathy, and seamless escalation to human counselors for prayer, deeper counseling, or urgent visits.</p>
     <div class="hero-buttons">
       <a href="/register" class="btn btn-primary">Start Free — No Credit Card →</a>
