@@ -31,6 +31,7 @@ export { createCampaign, processCampaignQueue, processCampaignQueueScheduled } f
 
 // Facebook / Instagram OAuth "Connect" flow
 export { fbConnectStart, fbConnectCallback } from "./facebook-oauth";
+export { waConnectStart, waConnectCallback } from "./whatsapp-onboard";
 export { checkSocialAccountTokenHealth } from "./token-health-check";
 
 // Set region to asia-southeast1 (Singapore) — closest to Indonesia
