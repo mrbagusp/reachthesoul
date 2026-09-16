@@ -13,12 +13,6 @@ import { cn } from "@/lib/utils";
 
 const tierOrder: PlanTier[] = ["free", "starter", "growth", "enterprise"];
 
-const FUTURE_PRICES: Partial<Record<PlanTier, number>> = {
-  starter: 49,
-  growth: 179,
-  enterprise: 449,
-};
-
 export default function BillingPage() {
   const activeOrg = useOrgStore((s) => s.activeOrg);
   const currentUser = useAuthStore((s) => s.currentUser);
@@ -287,9 +281,6 @@ export default function BillingPage() {
                     {config.price > 0 ? (
                       <p className="text-xl font-bold text-foreground">
                         ${config.price}<span className="text-xs font-normal text-muted-foreground">/mo</span>
-                        {FUTURE_PRICES[tier] && (
-                          <span className="text-[10px] font-normal text-muted-foreground/50 line-through ml-1.5">${FUTURE_PRICES[tier]}</span>
-                        )}
                       </p>
                     ) : (
                       <p className="text-xl font-bold text-green-600">Free</p>

@@ -8,7 +8,7 @@ import crypto from "crypto";
 
 const WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET ?? "";
 
-const ADMIN_WA_NUMBER = process.env.ADMIN_WA_NUMBER ?? "6285974773341";
+const ADMIN_WA_NUMBER = process.env.ADMIN_WA_NUMBER ?? "6285217971464";
 const ADMIN_FONNTE_TOKEN = process.env.ADMIN_FONNTE_TOKEN ?? "";
 
 // Map Paddle price IDs → plan tiers
