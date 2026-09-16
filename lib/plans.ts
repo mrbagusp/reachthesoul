@@ -156,7 +156,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
   starter: {
     name: "Starter",
     tier: "starter",
-    price: 29,
+    price: 49,
     description: "WhatsApp + AI prayer support. The sweet spot for most churches & ministries.",
     color: "#2563EB",
     maxUsers: 3,
@@ -212,7 +212,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
   growth: {
     name: "Growth",
     tier: "growth",
-    price: 97,
+    price: 149,
     description: "Full omnichannel + 24/7 AI counselor. For growing prayer & counseling ministries.",
     color: "#7C3AED",
     badge: "MOST POPULAR",
@@ -270,7 +270,7 @@ export const PLAN_CONFIGS: Record<PlanTier, PlanConfig> = {
   enterprise: {
     name: "Enterprise",
     tier: "enterprise",
-    price: 249,
+    price: 499,
     description: "For denominations & large counseling centers. Full power, near-unlimited.",
     color: "#D97706",
     maxUsers: 999,

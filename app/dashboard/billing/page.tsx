@@ -267,15 +267,6 @@ export default function BillingPage() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">Compare plans</h3>
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-[#2DD4BF] bg-[#0F1B2D] px-3 py-1 rounded-full">
-            <Sparkles size={10} /> FOUNDING CHURCH PRICING
-          </span>
-        </div>
-        <div className="p-3 rounded-lg bg-[#2DD4BF]/5 border border-[#2DD4BF]/15 mb-3">
-          <p className="text-[11px] text-muted-foreground text-center">
-            <span className="font-semibold text-foreground">Early Ministry Partner rates.</span>{" "}
-            Churches that join now <span className="font-semibold text-[#0F8A74]">keep their pricing permanently</span> as founding partners.
-          </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           {tierOrder.map((tier) => {
