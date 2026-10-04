@@ -13,6 +13,8 @@
  *   data-subtitle  Subtitle text (default: "We usually reply within minutes")
  *   data-greeting  First message shown to visitors (default: "Hi there! 👋 How can we help you today?")
  *   data-position  "right" or "left" (default: "right")
+ *
+ * Visitors can attach photos (JPG/PNG/GIF/WebP) and documents (PDF/DOC/DOCX/TXT), max 5 MB.
  */
 (function () {
   "use strict";
@@ -31,6 +33,15 @@
   var GREETING = script.getAttribute("data-greeting") || "Hi there! \uD83D\uDC4B How can we help you today?";
   var POSITION = script.getAttribute("data-position") === "left" ? "left" : "right";
   var API_URL = "https://asia-southeast1-reachthesoul-prod.cloudfunctions.net/webhookWidget";
+
+  var MAX_FILE_BYTES = 5 * 1024 * 1024; // keep in sync with backend (webhookWidget)
+  var ALLOWED_TYPES = {
+    "image/jpeg": 1, "image/png": 1, "image/gif": 1, "image/webp": 1,
+    "application/pdf": 1, "application/msword": 1,
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": 1,
+    "text/plain": 1
+  };
+  var PLACEHOLDER_RE = /^\[(Photo|File|Video|Voice message|Sticker|Attachment|Story mention)\]/;
 
   var POLL_OPEN_MS = 3000;     // while chat window is open
   var POLL_CLOSED_MS = 20000;  // while closed (to show unread badge)
@@ -88,11 +99,19 @@
     ".rts-msg-time{font-size:9px;opacity:0.55;margin-top:4px;}",
     ".rts-msg-failed{opacity:0.6;}",
     "#rts-widget-input-wrap{display:flex;gap:8px;padding:12px 16px;border-top:1px solid #E2E8F0;flex-shrink:0;background:#fff;}",
-    "#rts-widget-input{flex:1;border:1px solid #E2E8F0;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;font-family:inherit;color:#334155;background:#fff;margin:0;}",
+    "#rts-widget-input{flex:1;min-width:0;border:1px solid #E2E8F0;border-radius:8px;padding:8px 12px;font-size:13px;outline:none;font-family:inherit;color:#334155;background:#fff;margin:0;}",
     "#rts-widget-input:focus{border-color:" + PRIMARY + ";}",
     "#rts-widget-send{background:" + PRIMARY + ";color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;margin:0;}",
     "#rts-widget-send:hover{opacity:0.9;}",
     "#rts-widget-send:disabled{opacity:0.5;cursor:not-allowed;}",
+    "#rts-widget-attach{background:none;border:1px solid #E2E8F0;border-radius:8px;width:36px;flex-shrink:0;cursor:pointer;color:#64748B;display:flex;align-items:center;justify-content:center;padding:0;margin:0;}",
+    "#rts-widget-attach:hover{color:" + PRIMARY + ";border-color:" + PRIMARY + ";}",
+    "#rts-widget-attach:disabled{opacity:0.5;cursor:not-allowed;}",
+    "#rts-widget-attach svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}",
+    ".rts-att-img{display:block;max-width:100%;max-height:220px;border-radius:8px;margin:2px 0 4px;cursor:pointer;}",
+    ".rts-att-file{display:flex;align-items:center;gap:6px;padding:6px 8px;margin:2px 0 4px;border-radius:8px;background:rgba(255,255,255,0.85);color:#334155;text-decoration:none;font-size:12px;font-weight:600;word-break:break-all;}",
+    ".rts-msg-them .rts-att-file{background:#fff;}",
+    ".rts-msg-sending{opacity:0.7;}",
     ".rts-typing{align-self:flex-start;padding:10px 14px;background:#F1F5F9;border-radius:12px;font-size:12px;color:#94A3B8;}",
     ".rts-powered{text-align:center;padding:6px;font-size:9px;color:#94A3B8;border-top:1px solid #F1F5F9;background:#fff;}",
     ".rts-powered a{color:#64748B;text-decoration:none;font-weight:600;}"
@@ -114,7 +133,7 @@
   box.innerHTML =
     '<div id="rts-widget-header"><h3></h3><p></p><button id="rts-widget-close" type="button" aria-label="Close chat">&times;</button></div>' +
     '<div id="rts-widget-messages" aria-live="polite"></div>' +
-    '<div id="rts-widget-input-wrap"><input id="rts-widget-input" type="text" maxlength="2000" placeholder="Type a message..." /><button id="rts-widget-send" type="button">Send</button></div>' +
+    '<div id="rts-widget-input-wrap"><button id="rts-widget-attach" type="button" aria-label="Attach a photo or file" title="Attach a photo or file"><svg viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></button><input id="rts-widget-file" type="file" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf,.doc,.docx,.txt" style="display:none" /><input id="rts-widget-input" type="text" maxlength="2000" placeholder="Type a message..." /><button id="rts-widget-send" type="button">Send</button></div>' +
     '<div class="rts-powered">Powered by <a href="https://reachthesoul.org" target="_blank" rel="noopener">ReachTheSoul</a></div>';
   box.querySelector("h3").textContent = TITLE;
   box.querySelector("p").textContent = SUBTITLE;
@@ -130,6 +149,8 @@
   var sendBtn = box.querySelector("#rts-widget-send");
   var closeBtn = box.querySelector("#rts-widget-close");
   var badgeEl = btn.querySelector("#rts-widget-badge");
+  var attachBtn = box.querySelector("#rts-widget-attach");
+  var fileEl = box.querySelector("#rts-widget-file");
 
   var isOpen = false;
   var renderedIds = {};     // server message ids already shown
@@ -158,7 +179,9 @@
       n.textContent = opts.name;
       el.appendChild(n);
     }
-    el.appendChild(document.createTextNode(text));
+    var atts = opts.attachments || [];
+    for (var i = 0; i < atts.length; i++) el.appendChild(renderAttachment(atts[i]));
+    if (text && !(atts.length && PLACEHOLDER_RE.test(text))) el.appendChild(document.createTextNode(text));
     var t = document.createElement("div");
     t.className = "rts-msg-time";
     t.textContent = fmtTime(opts.ts || Date.now());
@@ -167,6 +190,26 @@
     messagesEl.appendChild(el);
     scrollDown();
     return el;
+  }
+
+  function renderAttachment(a) {
+    var url = String(a.url || "");
+    var safe = /^(https:|data:image\/)/.test(url);
+    if (a.type === "image" && safe) {
+      var img = document.createElement("img");
+      img.className = "rts-att-img";
+      img.src = url;
+      img.alt = a.filename || "Photo";
+      img.loading = "lazy";
+      img.onload = scrollDown;
+      if (/^https:/.test(url)) img.onclick = function () { window.open(url, "_blank", "noopener"); };
+      return img;
+    }
+    var link = document.createElement(/^https:/.test(url) ? "a" : "div");
+    link.className = "rts-att-file";
+    if (link.tagName === "A") { link.href = url; link.target = "_blank"; link.rel = "noopener"; }
+    link.textContent = "\uD83D\uDCCE " + (a.filename || "File");
+    return link;
   }
 
   function showTyping() {
@@ -204,14 +247,15 @@
 
       if (m.from === "me") {
         // Already shown optimistically? Then just confirm it.
+        var hasAtt = !!(m.attachments && m.attachments.length);
         var idx = -1;
         for (var j = 0; j < pendingMine.length; j++) {
-          if (pendingMine[j].text === m.text) { idx = j; break; }
+          if (hasAtt ? pendingMine[j].file : (!pendingMine[j].file && pendingMine[j].text === m.text)) { idx = j; break; }
         }
         if (idx >= 0) { pendingMine.splice(idx, 1); continue; }
-        addBubble(m.text, true, { ts: m.ts });
+        addBubble(m.text, true, { ts: m.ts, attachments: m.attachments });
       } else {
-        addBubble(m.text, false, { name: m.name, ts: m.ts });
+        addBubble(m.text, false, { name: m.name, ts: m.ts, attachments: m.attachments });
         waitingSince = 0;
         if (m.ts > seenUntil) newReplies++;
       }
@@ -275,33 +319,32 @@
   closeBtn.onclick = closeBox;
   document.addEventListener("visibilitychange", function () { if (!document.hidden && store(ACTIVE_KEY) === "1") poll(); });
 
-  // -- Send --
-  function send() {
-    var text = inputEl.value.trim();
-    if (!text || sendBtn.disabled) return;
-
-    var bubble = addBubble(text, true, {});
-    pendingMine.push({ text: text });
-    inputEl.value = "";
+  // -- Send (text or file) --
+  function postToServer(payload, bubble, pendingEntry) {
     sendBtn.disabled = true;
+    attachBtn.disabled = true;
+    payload.sender = visitorId;
+    payload.name = "Website Visitor";
+    payload.channel = "website";
+    payload.pageUrl = String(window.location.href).slice(0, 500);
 
     fetch(API_URL + "?org=" + encodeURIComponent(ORG_ID), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sender: visitorId,
-        name: "Website Visitor",
-        message: text,
-        channel: "website",
-        pageUrl: String(window.location.href).slice(0, 500),
-      }),
+      body: JSON.stringify(payload),
     })
       .then(function (r) {
-        if (!r.ok) throw new Error("HTTP " + r.status);
+        if (!r.ok) {
+          return r.json().catch(function () { return {}; }).then(function (j) {
+            throw new Error((j && j.error) || ("HTTP " + r.status));
+          });
+        }
         return r.json();
       })
       .then(function () {
         sendBtn.disabled = false;
+        attachBtn.disabled = false;
+        bubble.className = bubble.className.replace(" rts-msg-sending", "");
         store(ACTIVE_KEY, "1");
         waitingSince = Date.now();
         showTyping();
@@ -310,16 +353,97 @@
         setTimeout(poll, 4000);
         schedulePoll();
       })
-      .catch(function () {
+      .catch(function (err) {
         sendBtn.disabled = false;
+        attachBtn.disabled = false;
         hideTyping();
-        bubble.className += " rts-msg-failed";
-        for (var j = 0; j < pendingMine.length; j++) {
-          if (pendingMine[j].text === text) { pendingMine.splice(j, 1); break; }
-        }
-        addBubble("Sorry, your message could not be sent. Please check your connection and try again.", false, {});
+        bubble.className = bubble.className.replace(" rts-msg-sending", "") + " rts-msg-failed";
+        var k = pendingMine.indexOf(pendingEntry);
+        if (k >= 0) pendingMine.splice(k, 1);
+        var reason = err && /too large|not allowed|Empty file/i.test(err.message) ? " (" + err.message + ")" : "";
+        addBubble("Sorry, your message could not be sent" + reason + ". Please try again.", false, {});
       });
   }
+
+  function send() {
+    var text = inputEl.value.trim();
+    if (!text || sendBtn.disabled) return;
+    var bubble = addBubble(text, true, {});
+    var entry = { text: text };
+    pendingMine.push(entry);
+    inputEl.value = "";
+    postToServer({ message: text }, bubble, entry);
+  }
+
+  // Shrink big photos before upload (saves visitor data + stays under 5 MB)
+  function prepareImage(file, cb) {
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 1024 * 1024) { cb(null); return; }
+    try {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var max = 1600;
+          var scale = Math.min(1, max / Math.max(img.width, img.height));
+          var c = document.createElement("canvas");
+          c.width = Math.round(img.width * scale);
+          c.height = Math.round(img.height * scale);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url);
+          cb({ dataUrl: c.toDataURL("image/jpeg", 0.85), type: "image/jpeg" });
+        } catch (e) { cb(null); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); cb(null); };
+      img.src = url;
+    } catch (e) { cb(null); }
+  }
+
+  function sendFile(file) {
+    if (!file || attachBtn.disabled) return;
+    var type = String(file.type || "").toLowerCase();
+    if (!type && /\.docx$/i.test(file.name)) type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (!type && /\.doc$/i.test(file.name)) type = "application/msword";
+    if (!type && /\.txt$/i.test(file.name)) type = "text/plain";
+    if (!ALLOWED_TYPES[type]) {
+      addBubble("This file type isn't supported. Please send a photo (JPG, PNG, GIF, WebP) or a PDF, Word or text file.", false, {});
+      return;
+    }
+
+    function go(dataUrl, finalType) {
+      var b64 = String(dataUrl).replace(/^data:[^,]*,/, "");
+      if (Math.floor(b64.length * 3 / 4) > MAX_FILE_BYTES) {
+        addBubble("That file is larger than 5 MB. Please choose a smaller file.", false, {});
+        return;
+      }
+      var isImg = /^image\//.test(finalType);
+      var bubble = addBubble("", true, {
+        attachments: [{ type: isImg ? "image" : "document", url: isImg ? dataUrl : "", filename: file.name }],
+      });
+      bubble.className += " rts-msg-sending";
+      var entry = { file: true };
+      pendingMine.push(entry);
+      postToServer({ message: "", attachment: { name: file.name, type: finalType, data: b64 } }, bubble, entry);
+    }
+
+    prepareImage(file, function (shrunk) {
+      if (shrunk) { go(shrunk.dataUrl, shrunk.type); return; }
+      if (file.size > MAX_FILE_BYTES) {
+        addBubble("That file is larger than 5 MB. Please choose a smaller file.", false, {});
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function () { go(reader.result, type); };
+      reader.onerror = function () { addBubble("Couldn't read that file. Please try another one.", false, {}); };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  attachBtn.onclick = function () { if (!attachBtn.disabled) fileEl.click(); };
+  fileEl.onchange = function () {
+    var f = fileEl.files && fileEl.files[0];
+    fileEl.value = "";
+    if (f) sendFile(f);
+  };
 
   sendBtn.onclick = send;
   inputEl.onkeydown = function (e) {

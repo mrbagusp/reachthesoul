@@ -1,4 +1,5 @@
 import * as admin from "firebase-admin";
+import { randomUUID } from "crypto";
 import { logger } from "firebase-functions/v2";
 
 function getApp(): admin.app.App {
@@ -9,6 +10,9 @@ function getApp(): admin.app.App {
 function getBucket() {
   return getApp().storage().bucket();
 }
+
+// Largest inbound file we copy into Storage (keeps webhook memory/time safe).
+export const MAX_MEDIA_BYTES = 25 * 1024 * 1024; // 25 MB
 
 export type MediaUploadResult = {
   url: string;
@@ -30,8 +34,10 @@ export async function downloadAndUploadMedia(
   sourceUrl: string,
   ticketId: string,
   messageId: string,
-  headers: Record<string, string> = {}
+  headers: Record<string, string> = {},
+  opts: { mimeHint?: string; maxBytes?: number } = {}
 ): Promise<MediaUploadResult | null> {
+  const maxBytes = opts.maxBytes ?? MAX_MEDIA_BYTES;
   try {
     // Step 1: Download from source URL
     const response = await fetch(sourceUrl, { headers });
@@ -40,10 +46,21 @@ export async function downloadAndUploadMedia(
       return null;
     }
 
-    const mimeType = response.headers.get("content-type") ?? "application/octet-stream";
+    const declared = Number(response.headers.get("content-length") ?? 0);
+    if (declared && declared > maxBytes) {
+      logger.warn(`[downloadAndUploadMedia] Skipped: ${declared} bytes exceeds limit ${maxBytes}`);
+      return null;
+    }
+
+    const headerMime = (response.headers.get("content-type") ?? "").split(";")[0].trim();
+    const mimeType = (opts.mimeHint || headerMime || "application/octet-stream").split(";")[0].trim().toLowerCase();
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const size = buffer.length;
+    if (size > maxBytes) {
+      logger.warn(`[downloadAndUploadMedia] Skipped: ${size} bytes exceeds limit ${maxBytes}`);
+      return null;
+    }
 
     // Step 2: Generate filename
     const ext = getExtensionFromMime(mimeType);
@@ -51,19 +68,8 @@ export async function downloadAndUploadMedia(
     const filename = `${timestamp}${ext}`;
     const storagePath = `attachments/${ticketId}/${messageId}/${filename}`;
 
-    // Step 3: Upload to Firebase Storage
-    const bucket = getBucket();
-    const file = bucket.file(storagePath);
-    await file.save(buffer, {
-      metadata: {
-        contentType: mimeType,
-        cacheControl: "public, max-age=31536000",
-      },
-    });
-
-    // Step 4: Make public and get URL
-    await file.makePublic();
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    // Step 3: Upload to Firebase Storage (download-token URL — no makePublic needed)
+    const publicUrl = await uploadBufferToStorage(buffer, mimeType, storagePath);
 
     logger.info(`[downloadAndUploadMedia] Uploaded ${size} bytes to ${storagePath}`);
 
@@ -77,6 +83,29 @@ export async function downloadAndUploadMedia(
     logger.error("[downloadAndUploadMedia] Error:", err);
     return null;
   }
+}
+
+/**
+ * Upload a raw buffer to Firebase Storage and return a permanent download URL.
+ * Uses a Firebase download token (works with uniform bucket-level access and
+ * does not depend on makePublic / object ACLs).
+ */
+export async function uploadBufferToStorage(
+  buffer: Buffer,
+  mimeType: string,
+  storagePath: string,
+): Promise<string> {
+  const bucket = getBucket();
+  const token = randomUUID();
+  await bucket.file(storagePath).save(buffer, {
+    resumable: false,
+    metadata: {
+      contentType: mimeType,
+      cacheControl: "private, max-age=31536000",
+      metadata: { firebaseStorageDownloadTokens: token },
+    },
+  });
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
 }
 
 function getExtensionFromMime(mime: string): string {

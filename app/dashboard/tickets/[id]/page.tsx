@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TicketStatusBadge, TicketPriorityBadge } from "@/components/tickets/TicketStatusBadge";
 import { useCategories, useOutcomes, useUsers } from "@/hooks/use-firestore-config";
 import { useMessages } from "@/hooks/use-firestore-tickets";
+import { MessageAttachments, hasVisibleText } from "@/components/tickets/MessageAttachments";
 import { useRespondent } from "@/hooks/use-firestore-respondents";
 import { fetchTicketById, updateTicketStatus, updateTicketClassification, sendMessage, updateTicketFollowUp, clearTicketFollowUp } from "@/lib/firestore-services";
 import { useAuthStore } from "@/store/auth-store";
@@ -757,8 +758,10 @@ export default function TicketDetailPage() {
                               </span>
                             )}
                           </div>
+                          <MessageAttachments attachments={msg.attachments} alignRight={isRight} />
+                          {hasVisibleText(msg.content, msg.attachments) && (
                           <div className={cn(
-                            "rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm",
+                            "rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm whitespace-pre-wrap",
                             isAI
                               ? msg.isInternal
                                 ? "bg-blue-50 border border-blue-200 text-blue-900 rounded-tr-sm"
@@ -771,6 +774,7 @@ export default function TicketDetailPage() {
                           )}>
                             {msg.content}
                           </div>
+                          )}
                           <span className="text-[9px] text-muted-foreground/60 px-1">{formatTime(msg.createdAt)}</span>
                         </div>
                       </div>

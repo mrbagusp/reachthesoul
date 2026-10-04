@@ -232,6 +232,15 @@ export interface Ticket {
   followUpCreatedBy?: string;          // uid of agent who scheduled it
 }
 
+export interface MessageAttachment {
+  type: "image" | "video" | "audio" | "document" | "sticker" | "other";
+  url: string;
+  mimeType?: string;
+  filename?: string;
+  size?: number;
+  caption?: string;
+}
+
 export interface Message {
   messageId: string;
   ticketId: string;
@@ -243,6 +252,7 @@ export interface Message {
   createdAt: string;
   aiGenerated?: boolean;
   escalationTriggered?: EscalationReason | null;
+  attachments?: MessageAttachment[];
 }
 
 export interface Category {

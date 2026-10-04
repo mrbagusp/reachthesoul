@@ -2,7 +2,8 @@ import { onRequest } from "firebase-functions/v2/https";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { setGlobalOptions, logger } from "firebase-functions/v2";
 import { processIncomingMessage } from "./webhook-processor";
-import { downloadAndUploadMedia, categorizeMimeType } from "./media-helper";
+import type { Attachment } from "./webhook-processor";
+import { downloadAndUploadMedia, categorizeMimeType, uploadBufferToStorage } from "./media-helper";
 import { cleanupExpiredOrgData } from "./data-cleanup";
 import { onUserRegistered } from "./new-user-alert";
 import { onOnboardingComplete } from "./welcome-emails";
@@ -15,6 +16,7 @@ import {
 } from "./social-accounts";
 import type { SocialAccountDoc } from "./social-accounts";
 import { verifyMetaSignature } from "./verify-signature";
+import { parseWhatsappMessage, parseMessengerMessage } from "./meta-media";
 import * as admin from "firebase-admin";
 
 // Re-export scheduled function so Firebase deploys it
@@ -253,7 +255,7 @@ export const onMessageCreated = onDocumentCreated(
 // 1. WhatsApp Business Cloud API (Meta)
 //    Lookup: entry[].changes[].value.metadata.phone_number_id → social_accounts
 // ────────────────────────────────────────────────────────────────────────────
-export const webhookWhatsapp = onRequest({ cors: true, secrets: ["META_APP_SECRET"] }, async (req, res) => {
+export const webhookWhatsapp = onRequest({ cors: true, secrets: ["META_APP_SECRET"], memory: "512MiB", timeoutSeconds: 120 }, async (req, res) => {
   const WA_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN ?? "rts_wa_token";
 
   if (req.method === "GET") {
@@ -285,8 +287,16 @@ export const webhookWhatsapp = onRequest({ cors: true, secrets: ["META_APP_SECRE
         if (account) logger.info(`[webhookWhatsapp] Matched social_account: ${account.displayName} (${account.id})`);
       }
 
+      // Token for downloading media: social_accounts first, fallback to org config
+      let waToken: string = account?.credentials?.accessToken ?? "";
+      if (!waToken && (value.messages as any[]).some((m: any) => m.type !== "text")) {
+        const cfg = await getChannelConfig(orgId);
+        waToken = cfg.meta_access_token ?? cfg.whatsapp_access_token ?? "";
+      }
+
       for (const msg of value.messages as any[]) {
-        if (msg.type !== "text") continue;
+        const parsed = await parseWhatsappMessage(msg, waToken, orgId);
+        if (!parsed) continue; // reactions / system events
         const contact = (value.contacts as any[])?.find((c: any) => c.wa_id === msg.from);
         const phone = `+${msg.from}`;
         await processIncomingMessage({
@@ -295,7 +305,8 @@ export const webhookWhatsapp = onRequest({ cors: true, secrets: ["META_APP_SECRE
           senderId: msg.from,
           senderName: contact?.profile?.name ?? phone,
           senderPhone: phone,
-          message: msg.text?.body ?? "(pesan kosong)",
+          message: parsed.text,
+          attachments: parsed.attachments.length > 0 ? parsed.attachments : undefined,
           rawPayload: body,
           socialAccountId: account?.id,
           programName: account?.programName,
@@ -429,6 +440,25 @@ async function parseFonnteAttachments(body: any): Promise<any[]> {
 // ────────────────────────────────────────────────────────────────────────────
 const WIDGET_VISIBLE_ROLES = ["respondent", "agent", "admin", "supervisor", "ai"];
 
+// Files visitors may send through the widget (keep in sync with public/widget.js)
+const WIDGET_MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+const WIDGET_ALLOWED_MIME: Record<string, string> = {
+  "image/jpeg": ".jpg",
+  "image/png": ".png",
+  "image/gif": ".gif",
+  "image/webp": ".webp",
+  "application/pdf": ".pdf",
+  "application/msword": ".doc",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+  "text/plain": ".txt",
+};
+
+function safeFileName(name: string, ext: string): string {
+  const base = String(name || "file").replace(/\.[^.]*$/, "")
+    .replace(/[^a-zA-Z0-9-_ ]/g, "").trim().replace(/\s+/g, "_").substring(0, 60) || "file";
+  return base + ext;
+}
+
 async function findWidgetRespondentId(orgId: string, visitorId: string): Promise<string | null> {
   const snap = await getDb().collection("respondents")
     .where("orgId", "==", orgId)
@@ -465,7 +495,10 @@ export const webhookWidget = onRequest({ cors: true }, async (req, res) => {
         .sort((a, b) => (b.data().createdAt?.toMillis?.() ?? 0) - (a.data().createdAt?.toMillis?.() ?? 0))
         .slice(0, 3); // latest 3 conversations is plenty for the widget
 
-      const out: { id: string; from: "me" | "them"; name: string; text: string; ts: number }[] = [];
+      const out: {
+        id: string; from: "me" | "them"; name: string; text: string; ts: number;
+        attachments?: { type: string; url: string; filename?: string; mimeType?: string }[];
+      }[] = [];
       for (const t of tickets) {
         let q: admin.firestore.Query = getDb().collection(`tickets/${t.id}/messages`).orderBy("createdAt", "asc");
         if (since > 0) q = q.where("createdAt", ">", admin.firestore.Timestamp.fromMillis(since));
@@ -481,6 +514,13 @@ export const webhookWidget = onRequest({ cors: true }, async (req, res) => {
             name: d.senderRole === "ai" ? "Assistant" : d.senderRole === "respondent" ? "" : (d.senderName ?? "Team"),
             text: String(d.content ?? ""),
             ts,
+            ...(Array.isArray(d.attachments) && d.attachments.length > 0
+              ? {
+                attachments: d.attachments
+                  .filter((a: any) => a && typeof a.url === "string")
+                  .map((a: any) => ({ type: a.type ?? "other", url: a.url, filename: a.filename, mimeType: a.mimeType })),
+              }
+              : {}),
           });
         }
       }
@@ -499,7 +539,24 @@ export const webhookWidget = onRequest({ cors: true }, async (req, res) => {
     const message = String(body.message ?? "").trim().substring(0, 4000);
 
     if (!visitorId) { res.status(400).json({ error: "Missing sender (visitor id)" }); return; }
-    if (!message) { res.status(200).json({ status: "ok", skipped: "empty" }); return; }
+
+    // Optional attachment: { name, type, data(base64) }
+    const rawAtt = body.attachment && typeof body.attachment === "object" ? body.attachment : null;
+    let attBuffer: Buffer | null = null;
+    let attMime = "";
+    let attName = "";
+    if (rawAtt) {
+      attMime = String(rawAtt.type ?? "").toLowerCase();
+      const ext = WIDGET_ALLOWED_MIME[attMime];
+      if (!ext) { res.status(415).json({ error: "File type not allowed" }); return; }
+      const b64 = String(rawAtt.data ?? "").replace(/^data:[^,]*,/, "");
+      attBuffer = Buffer.from(b64, "base64");
+      if (!attBuffer.length) { res.status(400).json({ error: "Empty file" }); return; }
+      if (attBuffer.length > WIDGET_MAX_FILE_BYTES) { res.status(413).json({ error: "File too large (max 5 MB)" }); return; }
+      attName = safeFileName(String(rawAtt.name ?? ""), ext);
+    }
+
+    if (!message && !attBuffer) { res.status(200).json({ status: "ok", skipped: "empty" }); return; }
 
     // Multi-tenant guard: only accept messages for organizations that exist,
     // so a random ?org= value can't create orphan tickets.
@@ -512,13 +569,39 @@ export const webhookWidget = onRequest({ cors: true }, async (req, res) => {
 
     logger.info(`[webhookWidget] org=${orgId} visitor=${visitorId} msg="${message.substring(0, 50)}..."`);
 
+    let attachments: Attachment[] | undefined;
+    if (attBuffer) {
+      const visitorFolder = visitorId.replace(/[^a-zA-Z0-9_-]/g, "").substring(0, 64) || "visitor";
+      const storagePath = `attachments/widget/${orgId}/${visitorFolder}/${Date.now()}_${attName}`;
+      const url = await uploadBufferToStorage(attBuffer, attMime, storagePath);
+      attachments = [{
+        type: categorizeMimeType(attMime),
+        url,
+        mimeType: attMime,
+        filename: attName,
+        size: attBuffer.length,
+      }];
+    }
+
+    // Attachment-only message: give it a short text so AI auto-reply and
+    // ticket previews never see an empty message body.
+    const messageText = message || (attachments
+      ? (attachments[0].type === "image" ? "[Photo]" : `[File] ${attName}`)
+      : "");
+
+    const { attachment: _omitFile, ...payloadWithoutFile } = body;
     const result = await processIncomingMessage({
       orgId,
       channel: "website",
       senderId: visitorId,
       senderName: name,
-      message,
-      rawPayload: { ...body, pageUrl: String(body.pageUrl ?? "").substring(0, 500) },
+      message: messageText,
+      attachments,
+      rawPayload: {
+        ...payloadWithoutFile,
+        pageUrl: String(body.pageUrl ?? "").substring(0, 500),
+        ...(attachments ? { attachment: { name: attName, type: attMime, size: attBuffer!.length } } : {}),
+      },
     });
 
     res.status(200).json({ status: "ok", ticketNumber: result?.ticketNumber ?? null });
@@ -533,7 +616,7 @@ export const webhookWidget = onRequest({ cors: true }, async (req, res) => {
 //    Lookup: entry[].id (IG Business Account ID) → social_accounts
 //    NEW: Uses fetchMetaUserProfile for real sender names
 // ────────────────────────────────────────────────────────────────────────────
-export const webhookInstagram = onRequest({ cors: true, secrets: ["META_APP_SECRET"] }, async (req, res) => {
+export const webhookInstagram = onRequest({ cors: true, secrets: ["META_APP_SECRET"], memory: "512MiB", timeoutSeconds: 120 }, async (req, res) => {
   const IG_VERIFY_TOKEN = process.env.INSTAGRAM_VERIFY_TOKEN ?? "rts_ig_token";
 
   if (req.method === "GET") {
@@ -571,7 +654,7 @@ export const webhookInstagram = onRequest({ cors: true, secrets: ["META_APP_SECR
       ?? "";
 
     for (const event of messaging as any[]) {
-      if (!event.message?.text) continue;
+      if (!event.message) continue;
       // ── Guard: skip echo (pesan yang akun kita sendiri kirim) ──
       if (event.message?.is_echo === true) {
         logger.info("[webhookInstagram] Skipping echo message");
@@ -589,12 +672,16 @@ export const webhookInstagram = onRequest({ cors: true, secrets: ["META_APP_SECR
         ? await fetchMetaUserProfile(senderId, igToken, "Instagram")
         : `Instagram User ${senderId.slice(-4)}`;
 
+      const parsed = await parseMessengerMessage(event.message, "instagram", orgId);
+      if (!parsed) continue;
+
       await processIncomingMessage({
         orgId,
         channel: "instagram",
         senderId,
         senderName,
-        message: event.message.text,
+        message: parsed.text,
+        attachments: parsed.attachments.length > 0 ? parsed.attachments : undefined,
         rawPayload: body,
         socialAccountId: account?.id,
         programName: account?.programName,
@@ -612,7 +699,7 @@ export const webhookInstagram = onRequest({ cors: true, secrets: ["META_APP_SECR
 //    Lookup: entry[].id (Page ID) → social_accounts
 //    NEW: Uses fetchMetaUserProfile for real sender names
 // ────────────────────────────────────────────────────────────────────────────
-export const webhookFacebook = onRequest({ cors: true, secrets: ["META_APP_SECRET"] }, async (req, res) => {
+export const webhookFacebook = onRequest({ cors: true, secrets: ["META_APP_SECRET"], memory: "512MiB", timeoutSeconds: 120 }, async (req, res) => {
   const FB_VERIFY_TOKEN = process.env.FACEBOOK_VERIFY_TOKEN ?? "rts_fb_token";
 
   if (req.method === "GET") {
@@ -649,7 +736,7 @@ export const webhookFacebook = onRequest({ cors: true, secrets: ["META_APP_SECRE
       ?? "";
 
     for (const event of messaging as any[]) {
-      if (!event.message?.text) continue;
+      if (!event.message) continue;
       // ── Guard: skip echo (pesan yang Page kita sendiri kirim) ──
       if (event.message?.is_echo === true) {
         logger.info("[webhookFacebook] Skipping echo message");
@@ -667,12 +754,16 @@ export const webhookFacebook = onRequest({ cors: true, secrets: ["META_APP_SECRE
         ? await fetchMetaUserProfile(senderId, pageToken, "Facebook")
         : `Facebook User ${senderId.slice(-4)}`;
 
+      const parsed = await parseMessengerMessage(event.message, "facebook", orgId);
+      if (!parsed) continue;
+
       await processIncomingMessage({
         orgId,
         channel: "facebook",
         senderId,
         senderName,
-        message: event.message.text,
+        message: parsed.text,
+        attachments: parsed.attachments.length > 0 ? parsed.attachments : undefined,
         rawPayload: body,
         socialAccountId: account?.id,
         programName: account?.programName,
