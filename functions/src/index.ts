@@ -36,6 +36,8 @@ export { createCampaign, processCampaignQueue, processCampaignQueueScheduled } f
 export { fbConnectStart, fbConnectCallback } from "./facebook-oauth";
 export { waConnectStart, waConnectCallback } from "./whatsapp-onboard";
 export { checkSocialAccountTokenHealth } from "./token-health-check";
+// WhatsApp fees: pull Meta's own pricing analytics (approximate charges, free vs paid)
+export { syncWhatsappPricingScheduled, syncWhatsappPricingNow } from "./wa-pricing-sync";
 
 // Set region to asia-southeast1 (Singapore) — closest to Indonesia
 setGlobalOptions({ region: "asia-southeast1" });

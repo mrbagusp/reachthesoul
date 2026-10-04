@@ -2,6 +2,18 @@
 import { useEffect, useState } from "react";
 import { DEFAULT_WA_RATES, type WaRateTable, type WaMonthUsage } from "@/lib/whatsapp-pricing";
 
+// Meta's own numbers (pricing_analytics), synced by functions/src/wa-pricing-sync.ts
+export type MetaMonthReport = {
+  volume: number;
+  freeVolume: number;
+  paidVolume: number;
+  cost: number;
+  currency: string;        // WABA currency (e.g. "USD", "IDR"), or "MIXED"
+  mixedCurrency?: boolean;
+  costByCurrency?: Record<string, number>;
+  syncedAt?: string;
+};
+
 export type WhatsappBillingState = {
   loading: boolean;
   hasWhatsappMeta: boolean;            // org has at least one WhatsApp Cloud API (Meta) account
@@ -15,6 +27,11 @@ export type WhatsappBillingState = {
     lastSuccessAt?: any;
   };
   budgetUsd: number | null;            // optional monthly alert threshold set by org admin
+  metaReport: {
+    months: Record<string, MetaMonthReport>;
+    lastSyncAt?: any;
+    lastSyncError?: string;
+  };
   rates: WaRateTable;
 };
 
@@ -31,6 +48,7 @@ export function useWhatsappBilling(orgId: string | undefined): WhatsappBillingSt
     usage: {},
     billing: {},
     budgetUsd: null,
+    metaReport: { months: {} },
     rates: DEFAULT_WA_RATES,
   });
 
@@ -73,6 +91,11 @@ export function useWhatsappBilling(orgId: string | undefined): WhatsappBillingSt
           usage: (d.whatsappUsage ?? {}) as Record<string, WaMonthUsage>,
           billing: d.whatsappBilling ?? {},
           budgetUsd: typeof d.whatsappBudgetUsd === "number" ? d.whatsappBudgetUsd : null,
+          metaReport: {
+            months: (d.whatsappMetaReport?.months ?? {}) as Record<string, MetaMonthReport>,
+            lastSyncAt: d.whatsappMetaReport?.lastSyncAt,
+            lastSyncError: d.whatsappMetaReport?.lastSyncError,
+          },
           rates,
         });
       }, () => {
@@ -106,4 +129,15 @@ export async function setWhatsappBudget(orgId: string, budgetUsd: number | null)
   await updateDoc(doc(db, "organizations", orgId), {
     whatsappBudgetUsd: budgetUsd === null ? deleteField() : budgetUsd,
   });
+}
+
+/** Ask the backend to pull fresh numbers from Meta now (rate-limited to once per 2 min per org). */
+export async function refreshWhatsappMetaReport(orgId: string): Promise<string> {
+  const [{ httpsCallable }, { functions }] = await Promise.all([
+    import("firebase/functions"),
+    import("@/lib/firebase"),
+  ]);
+  const fn = httpsCallable<{ orgId: string }, { status: string }>(functions, "syncWhatsappPricingNow");
+  const res = await fn({ orgId });
+  return res.data?.status ?? "ok";
 }
