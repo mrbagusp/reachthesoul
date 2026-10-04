@@ -11,7 +11,6 @@ import { usePresenceStore } from "@/store/presence-store";
 import AuthProvider from "@/components/auth/AuthProvider";
 import { PaddleProvider } from "@/components/billing/PaddleProvider";
 import { UsageBanner } from "@/components/feature-gate/UsageBanner";
-import { WhatsAppFloat } from "@/components/layout/WhatsAppFloat";
 import type { UserRole } from "@/types";
 
 const pageTitles: Record<string, string> = {
@@ -113,7 +112,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-      <WhatsAppFloat />
     </div>
   );
 }

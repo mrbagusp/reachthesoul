@@ -324,7 +324,11 @@
     sendBtn.disabled = true;
     attachBtn.disabled = true;
     payload.sender = visitorId;
-    payload.name = "Website Visitor";
+    // Host page may identify the visitor (e.g. logged-in ReachTheSoul dashboard user)
+    var who = window.rtsWidgetVisitor || null;
+    payload.name = (who && who.name) ? String(who.name).slice(0, 100) : "Website Visitor";
+    if (who && who.email) payload.email = String(who.email).slice(0, 200);
+    if (who && who.orgId) payload.visitorOrgId = String(who.orgId).slice(0, 100);
     payload.channel = "website";
     payload.pageUrl = String(window.location.href).slice(0, 500);
 

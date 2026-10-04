@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
+import { RtsSupportWidget } from '@/components/layout/RtsSupportWidget'
 
 export const metadata: Metadata = {
   title: {
@@ -266,6 +267,8 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         {children}
+        {/* RTS support chat on every page (replaces WhatsApp for support questions) */}
+        <RtsSupportWidget />
       </body>
     </html>
   )

@@ -1,6 +1,5 @@
 "use client";
 import { useEffect } from "react";
-import Script from "next/script";
 
 export default function LandingPage() {
   useEffect(() => {
@@ -21,16 +20,6 @@ export default function LandingPage() {
       <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
       <style dangerouslySetInnerHTML={{__html: STYLES}} />
       <div dangerouslySetInnerHTML={{__html: BODY}} />
-      {/* Live demo of the RTS website chat widget — chats arrive in the reachthesoul-admin dashboard */}
-      <Script
-        src="/widget.js"
-        data-org="reachthesoul-admin"
-        data-color="#2B6CB0"
-        data-title="Chat with us"
-        data-subtitle="We usually reply within minutes"
-        data-greeting="Hi there! 👋 Have a question about ReachTheSoul? Ask us anything — this chat is ReachTheSoul's own website widget."
-        strategy="lazyOnload"
-      />
     </>
   );
 }
