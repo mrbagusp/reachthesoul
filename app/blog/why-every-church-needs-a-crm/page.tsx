@@ -14,7 +14,7 @@ const faqs = [
   { question: "Will people know they are talking to an AI?", answer: "That is your choice. You configure the AI instructions, including how it introduces itself. Most churches choose to have it respond warmly while being clear that a human counselor will follow up." },
   { question: "Does ReachTheSoul support Indonesian and other languages?", answer: "Yes. The AI automatically responds in whatever language the person uses, including Indonesian, English, or other languages. No additional configuration needed." },
   { question: "What about WhatsApp calling?", answer: "Call integration is available on Growth and Enterprise plans as an add-on. It includes inbound and outbound calls, call recording, and call logs within the dashboard." },
-  { question: "Is there a message limit?", answer: "Starter plan includes 500 WhatsApp initiative conversations per month with unlimited incoming messages. Growth includes 1,000. Enterprise includes 3,000." },
+  { question: "Is there a message limit?", answer: "Starter plan includes 500 WhatsApp initiative conversations per month with unlimited incoming messages. Growth includes 1,000. Enterprise includes 3,000. Since October 1, 2026, Meta also charges a small fee per WhatsApp message sent, billed by Meta directly to your WhatsApp Business account (no markup from ReachTheSoul)." },
 ]
 
 export default function Page() {

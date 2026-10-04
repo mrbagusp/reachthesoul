@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PLAN_CONFIGS } from "@/lib/plans";
+import { WhatsAppRatesEditor } from "@/components/platform/WhatsAppRatesEditor";
 import type { PlanTier } from "@/types";
 
 interface OrgData {
@@ -421,7 +422,7 @@ export default function PlatformAdminPage() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<"overview" | "orgs" | "users">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "orgs" | "users" | "waRates">("overview");
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
   const [deletingOrg, setDeletingOrg] = useState<string | null>(null);
 
@@ -627,6 +628,7 @@ export default function PlatformAdminPage() {
           { id: "overview" as const, label: "Recent Activity" },
           { id: "orgs" as const, label: `Organizations (${totalOrgs})` },
           { id: "users" as const, label: `Users (${totalUsers})` },
+          { id: "waRates" as const, label: "WhatsApp Rates" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -653,6 +655,9 @@ export default function PlatformAdminPage() {
           className="pl-9 h-9 text-sm"
         />
       </div>
+
+      {/* WhatsApp fee rates (estimate shown to orgs) */}
+      {activeTab === "waRates" && <WhatsAppRatesEditor />}
 
       {/* Overview Tab */}
       {activeTab === "overview" && (

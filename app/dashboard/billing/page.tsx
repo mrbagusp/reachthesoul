@@ -10,6 +10,9 @@ import { Check, X, Crown, Sparkles, ArrowRight, Database, Infinity, Wrench, Chec
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { WhatsAppFeesCard } from "@/components/billing/WhatsAppFeesCard";
+import { ServiceAgreementCard } from "@/components/billing/ServiceAgreementCard";
+import { WhatsAppBillingNotice } from "@/components/admin/WhatsAppBillingNotice";
 
 const tierOrder: PlanTier[] = ["free", "starter", "growth", "enterprise"];
 
@@ -256,6 +259,17 @@ export default function BillingPage() {
           </div>
         )}
       </div>
+
+      {/* WhatsApp (Meta) per-message fees — estimate + alert */}
+      {currentPlan !== "free" && (
+        <>
+          <WhatsAppBillingNotice />
+          <WhatsAppFeesCard />
+        </>
+      )}
+
+      {/* Basic service agreement (PDF) for finance / audit */}
+      <ServiceAgreementCard />
 
       {/* Plan comparison */}
       <div>

@@ -11,6 +11,7 @@ import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import OnboardingQuiz from "@/components/onboarding/OnboardingQuiz";
 import { UpgradeWelcome } from "@/components/onboarding/UpgradeWelcome";
 import { cn } from "@/lib/utils";
+import { WhatsAppBillingNotice } from "@/components/admin/WhatsAppBillingNotice";
 
 export default function OverviewPage() {
   const { tickets, loading: ticketsLoading } = useTickets();
@@ -70,6 +71,7 @@ export default function OverviewPage() {
       <UpgradeWelcome />
 
       {/* Onboarding wizard — shows until all steps complete */}
+      <WhatsAppBillingNotice />
       <OnboardingWizard />
 
       {/* Stat Cards */}

@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOrgStore } from "@/store/org-store";
 import { ConnectMetaButton, MetaConnectResult } from "@/components/admin/ConnectMetaButton";
 import { ConnectWhatsAppButton, WhatsAppConnectResult } from "@/components/admin/ConnectWhatsAppButton";
+import { WhatsAppBillingNotice } from "@/components/admin/WhatsAppBillingNotice";
 import {
   fetchSocialAccounts,
   addSocialAccount,
@@ -238,7 +239,7 @@ export default function SocialAccountsPage() {
         <div className="flex items-center gap-2"> <ConnectMetaButton /> <ConnectWhatsAppButton /> <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => { resetForm(); setShowForm(true); }}> <Plus size={12} /> Add Manual </Button> </div>
       </div>
 
-      {/* OAuth return status */} <MetaConnectResult onSuccess={loadAccounts} /> <WhatsAppConnectResult onSuccess={loadAccounts} />
+      {/* OAuth return status */} <MetaConnectResult onSuccess={loadAccounts} /> <WhatsAppConnectResult onSuccess={loadAccounts} /> <WhatsAppBillingNotice />
 
       {/* Add / Edit Form */}
       {showForm && (

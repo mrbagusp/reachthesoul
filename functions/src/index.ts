@@ -17,6 +17,7 @@ import {
 import type { SocialAccountDoc } from "./social-accounts";
 import { verifyMetaSignature } from "./verify-signature";
 import { parseWhatsappMessage, parseMessengerMessage } from "./meta-media";
+import { recordWhatsappSend } from "./wa-usage";
 import * as admin from "firebase-admin";
 
 // Re-export scheduled function so Firebase deploys it
@@ -188,8 +189,10 @@ export const onMessageCreated = onDocumentCreated(
           headers: { "Authorization": `Bearer ${waToken}`, "Content-Type": "application/json" },
           body: JSON.stringify({ messaging_product: "whatsapp", to: cleanPhone, type: "text", text: { body: message.content } }),
         });
-        const result = await response.json();
+        const result = await response.json().catch(() => ({}));
         logger.info(`[onMessageCreated] Meta WA → ${cleanPhone}:`, JSON.stringify(result));
+        // Count delivered messages (for the Meta fee estimate) + detect payment problems
+        await recordWhatsappSend(orgId, cleanPhone, response.ok, result);
       }
 
       // ── Send via Fonnte (WhatsApp) — fallback ──

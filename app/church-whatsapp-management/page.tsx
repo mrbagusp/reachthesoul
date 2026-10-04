@@ -55,7 +55,7 @@ export default function ChurchWhatsAppManagementPage() {
       whyTitle="Why churches move their WhatsApp to ReachTheSoul"
       whyPoints={[
         { title: "No more phone dependency", desc: "When the admin is on vacation, WhatsApp doesn’t stop. When the pastor changes phones, nothing is lost. The system runs on the platform, not on personal devices." },
-        { title: "Unlimited incoming messages", desc: "Every plan includes unlimited incoming WhatsApp messages. Your respondents can message as much as they need. You only pay for outbound initiative conversations." },
+        { title: "Unlimited incoming messages", desc: "Every plan includes unlimited incoming WhatsApp messages. Your respondents can message as much as they need. Replies you send are billed by Meta per message, directly to your WhatsApp Business account — ReachTheSoul adds no markup, and your dashboard shows a live cost estimate." },
         { title: "Works alongside Instagram & Facebook", desc: "ReachTheSoul isn’t just WhatsApp — it’s omnichannel. Instagram DMs, Facebook messages, and website chat all flow into the same inbox. One dashboard for all your digital ministry." },
         { title: "We set it up for you", desc: "WhatsApp Business API integration can be tricky. We handle the entire setup for you — within 12 hours of signing up. No technical knowledge required." },
       ]}

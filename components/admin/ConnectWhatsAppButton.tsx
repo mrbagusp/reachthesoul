@@ -73,7 +73,7 @@ export function WhatsAppConnectResult({ onSuccess }: { onSuccess?: () => void })
       let result: { ok: boolean; text: string } | null = null;
       if (status === "success") {
         const phone = params.get("phone") ?? "";
-        result = { ok: true, text: `WhatsApp connected ✓ ${phone}` };
+        result = { ok: true, text: `WhatsApp connected ✓ ${phone} — one last step: add a payment method in WhatsApp Manager (see below).` };
         onSuccess?.();
       } else if (status === "upgrade_required") {
         result = { ok: false, text: "Upgrade your plan to connect WhatsApp." };

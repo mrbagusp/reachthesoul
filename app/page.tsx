@@ -188,6 +188,10 @@ const STYLES = `
     .founding-notice strong { color: var(--navy); }
     .founding-notice em { color: var(--teal-dark); font-style: normal; font-weight: 600; }
     .future-price { font-size: 11px; color: var(--gray-400); text-decoration: line-through; margin-left: 6px; font-family: var(--font-body); font-weight: 400; }
+    .price-card ul li.feat-fee { color: var(--gray-500); font-size: 12px; }
+    .price-card ul li.feat-fee::before { content: '+'; color: var(--gray-400); }
+    .wa-fee-note { max-width: 760px; margin: 28px auto 0; text-align: center; font-size: 12px; line-height: 1.7; color: var(--gray-500); }
+    .wa-fee-note a { color: var(--teal-dark); text-decoration: underline; }
     .ministry-note { max-width: 620px; margin: 40px auto 0; text-align: center; padding: 24px 28px; background: linear-gradient(135deg, rgba(45,212,191,0.06), rgba(45,212,191,0.02)); border: 1px solid rgba(45,212,191,0.18); border-radius: 14px; }
     .ministry-note p { font-size: 14px; color: var(--gray-600); line-height: 1.7; margin: 0 0 16px; }
     .ministry-note-contacts { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
@@ -521,6 +525,7 @@ const BODY = `
           <li>500 respondents</li>
           <li>300 AI conversations/mo</li>
           <li>500 WhatsApp conversations</li>
+          <li class="feat-fee">WhatsApp message fees, billed directly by Meta*</li>
           <li>Unlimited incoming messages</li>
           <li>AI auto-reply (basic model)</li>
           <li class="feat-locked">AI crisis escalation to pastoral team (Growth plan)</li>
@@ -538,6 +543,7 @@ const BODY = `
           <li>2,000 respondents</li>
           <li>1,500 AI conversations/mo</li>
           <li>1,000 WhatsApp conversations</li>
+          <li class="feat-fee">WhatsApp message fees, billed directly by Meta*</li>
           <li>Instagram, Facebook, TikTok DM</li>
           <li>24/7 AI counselor (advanced)</li>
           <li class="feat-escalation">AI crisis detection & instant WhatsApp escalation to your pastoral team</li>
@@ -556,6 +562,7 @@ const BODY = `
           <li>Unlimited respondents</li>
           <li>5,000 AI conversations/mo</li>
           <li>3,000 WhatsApp conversations</li>
+          <li class="feat-fee">WhatsApp message fees, billed directly by Meta*</li>
           <li>All channels + API access</li>
           <li class="feat-escalation">AI crisis detection & instant WhatsApp escalation to your pastoral team</li>
           <li>AI trained on your doctrine</li>
@@ -568,6 +575,8 @@ const BODY = `
         <p style="margin-top:8px;font-size:12px;color:#888;">Need custom setup? <a href="mailto:hello@reachthesoul.org" style="color:#2DD4BF;">Contact us</a></p>
       </div>
     </div>
+
+    <p class="wa-fee-note">* <strong>WhatsApp message fees:</strong> Since Oct 1, 2026, Meta charges per WhatsApp message sent. These fees are billed by Meta directly to your WhatsApp Business account &mdash; ReachTheSoul adds no markup. Rates vary by country (<a href="https://business.whatsapp.com/products/platform-pricing" target="_blank" rel="noopener">see Meta's rates</a>). Track your estimated cost live in your dashboard.</p>
 
     <div class="ministry-note">
       <p>If cost is the only thing standing between your ministry and reaching more souls, don't let it stop you. Talk to us &mdash; we'll find a way together.</p>
