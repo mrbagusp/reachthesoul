@@ -49,6 +49,7 @@ const CHANNEL_CONFIG: Record<string, { label: string; icon: React.ReactNode; col
   whatsapp_meta:   { label: "WhatsApp",  icon: <MessageCircle size={10} />, color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
   email:           { label: "Email",     icon: <Mail size={10} />,          color: "text-cyan-700",    bg: "bg-cyan-50 border-cyan-200" },
   call:            { label: "Call",      icon: <Phone size={10} />,         color: "text-amber-700",   bg: "bg-amber-50 border-amber-200" },
+  website:         { label: "Website",   icon: <Globe size={10} />,         color: "text-indigo-700",  bg: "bg-indigo-50 border-indigo-200" },
 };
 
 type Period = "all" | "today" | "this_week" | "this_month" | "custom";
@@ -151,7 +152,7 @@ export default function TicketsPage() {
     if (ch) {
       const MAP: Record<string, string> = {
         whatsapp_meta: "WhatsApp", whatsapp_fonnte: "WhatsApp",
-        instagram: "Instagram", facebook: "Facebook", call: "Call",
+        instagram: "Instagram", facebook: "Facebook", call: "Call", website: "Website",
       };
       return MAP[ch] ?? ch;
     }

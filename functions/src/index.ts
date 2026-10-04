@@ -418,15 +418,81 @@ async function parseFonnteAttachments(body: any): Promise<any[]> {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// 2b. Website Chat Widget  (public/widget.js posts here)
+// 2b. Website Chat Widget  (public/widget.js talks to this endpoint)
 //     URL: https://asia-southeast1-reachthesoul-prod.cloudfunctions.net/webhookWidget?org=<orgId>
+//
+//     POST  { sender, name, message }      → visitor sends a message (creates/updates ticket)
+//     GET   ?org=&visitor=&since=<ms>      → visitor fetches conversation (counselor + AI replies)
+//
+//     The visitor id is a random secret generated in the visitor's browser;
+//     only someone holding it can read that conversation.
 // ────────────────────────────────────────────────────────────────────────────
+const WIDGET_VISIBLE_ROLES = ["respondent", "agent", "admin", "supervisor", "ai"];
+
+async function findWidgetRespondentId(orgId: string, visitorId: string): Promise<string | null> {
+  const snap = await getDb().collection("respondents")
+    .where("orgId", "==", orgId)
+    .where("senderKey", "==", visitorId)
+    .where("channelFamily", "==", "website")
+    .limit(1).get();
+  if (!snap.empty) return snap.docs[0].id;
+  // Fallback for respondents created before senderKey existed
+  const legacy = await getDb().collection("respondents")
+    .where("orgId", "==", orgId)
+    .where("channelSenderId", "==", visitorId)
+    .limit(1).get();
+  return legacy.empty ? null : legacy.docs[0].id;
+}
+
 export const webhookWidget = onRequest({ cors: true }, async (req, res) => {
-  if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
   const orgId = String(req.query.org ?? "").trim();
   if (!orgId) { res.status(400).json({ error: "Missing org parameter" }); return; }
 
   try {
+    // ── GET: fetch conversation for this visitor ──
+    if (req.method === "GET") {
+      const visitorId = String(req.query.visitor ?? "").trim().substring(0, 100);
+      const since = Number(req.query.since ?? 0) || 0;
+      if (!visitorId) { res.status(400).json({ error: "Missing visitor" }); return; }
+
+      const respondentId = await findWidgetRespondentId(orgId, visitorId);
+      if (!respondentId) { res.status(200).json({ messages: [] }); return; }
+
+      const ticketSnap = await getDb().collection("tickets")
+        .where("respondentId", "==", respondentId).get();
+      const tickets = ticketSnap.docs
+        .filter((d) => d.data().orgId === orgId)
+        .sort((a, b) => (b.data().createdAt?.toMillis?.() ?? 0) - (a.data().createdAt?.toMillis?.() ?? 0))
+        .slice(0, 3); // latest 3 conversations is plenty for the widget
+
+      const out: { id: string; from: "me" | "them"; name: string; text: string; ts: number }[] = [];
+      for (const t of tickets) {
+        let q: admin.firestore.Query = getDb().collection(`tickets/${t.id}/messages`).orderBy("createdAt", "asc");
+        if (since > 0) q = q.where("createdAt", ">", admin.firestore.Timestamp.fromMillis(since));
+        const msgs = await q.limit(100).get();
+        for (const m of msgs.docs) {
+          const d = m.data();
+          if (d.isInternal || !WIDGET_VISIBLE_ROLES.includes(d.senderRole)) continue;
+          const ts = d.createdAt?.toMillis?.() ?? 0;
+          if (!ts) continue; // serverTimestamp not resolved yet — will come next poll
+          out.push({
+            id: m.id,
+            from: d.senderRole === "respondent" ? "me" : "them",
+            name: d.senderRole === "ai" ? "Assistant" : d.senderRole === "respondent" ? "" : (d.senderName ?? "Team"),
+            text: String(d.content ?? ""),
+            ts,
+          });
+        }
+      }
+      out.sort((a, b) => a.ts - b.ts);
+      res.set("Cache-Control", "no-store");
+      res.status(200).json({ messages: out.slice(-100) });
+      return;
+    }
+
+    if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
+
+    // ── POST: visitor sends a message ──
     const body = req.body ?? {};
     const visitorId = String(body.sender ?? "").trim().substring(0, 100);
     const name = (String(body.name ?? "").trim() || "Website Visitor").substring(0, 100);
@@ -446,16 +512,16 @@ export const webhookWidget = onRequest({ cors: true }, async (req, res) => {
 
     logger.info(`[webhookWidget] org=${orgId} visitor=${visitorId} msg="${message.substring(0, 50)}..."`);
 
-    await processIncomingMessage({
+    const result = await processIncomingMessage({
       orgId,
       channel: "website",
       senderId: visitorId,
       senderName: name,
       message,
-      rawPayload: body,
+      rawPayload: { ...body, pageUrl: String(body.pageUrl ?? "").substring(0, 500) },
     });
 
-    res.status(200).json({ status: "ok" });
+    res.status(200).json({ status: "ok", ticketNumber: result?.ticketNumber ?? null });
   } catch (err) {
     logger.error("[webhookWidget] Error:", err);
     res.status(500).json({ error: "Internal error" });
@@ -737,7 +803,8 @@ export const onRespondentMessage = onDocumentCreated(
         channel === "whatsapp_fonnte" || channel === "whatsapp_meta" ? "WhatsApp" :
         channel === "facebook" ? "Facebook" :
         channel === "instagram" ? "Instagram" :
-        channel === "call" ? "Call" : channel;
+        channel === "call" ? "Call" :
+        channel === "website" ? "Website" : channel;
       if (channelToggles[channelKey] === false) {
         logger.info(`[onRespondentMessage] AI disabled for channel ${channelKey}`);
         return;
