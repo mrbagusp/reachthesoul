@@ -14,7 +14,7 @@ function getDb(): Firestore {
   return getApp().firestore();
 }
 
-export type Channel = "whatsapp_meta" | "whatsapp_fonnte" | "instagram" | "facebook" | "call";
+export type Channel = "whatsapp_meta" | "whatsapp_fonnte" | "instagram" | "facebook" | "call" | "website";
 export type AttachmentType = "image" | "video" | "audio" | "document" | "sticker" | "other";
 
 export type Attachment = {
@@ -47,6 +47,7 @@ const CHANNEL_LEAD_SOURCE: Record<Channel, string> = {
   instagram:       "Instagram",
   facebook:        "Facebook",
   call:            "Telepon",
+  website:         "Website Chat",
 };
 
 // ── Respondent identity helpers (dedup fix) ─────────────────────────────────

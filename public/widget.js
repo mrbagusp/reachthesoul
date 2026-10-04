@@ -26,7 +26,7 @@
   var TITLE = script.getAttribute("data-title") || "Chat with us";
   var SUBTITLE = script.getAttribute("data-subtitle") || "We usually reply within minutes";
   var POSITION = script.getAttribute("data-position") || "right";
-  var API_URL = "https://asia-southeast1-reachthesoul-prod.cloudfunctions.net/webhookFonnte";
+  var API_URL = "https://asia-southeast1-reachthesoul-prod.cloudfunctions.net/webhookWidget";
 
   // Generate visitor ID (persist in localStorage)
   var VISITOR_KEY = "rts_visitor_" + ORG_ID;

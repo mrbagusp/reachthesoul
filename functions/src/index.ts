@@ -153,6 +153,14 @@ export const onMessageCreated = onDocumentCreated(
       const channel = ticket.channel ?? "";
       const orgId = ticket.orgId ?? "";
 
+      // Website widget has no push channel back to the visitor (yet).
+      // Return early so the reply is NOT mis-routed to Fonnte/WhatsApp when
+      // the org's active_whatsapp_provider is "fonnte".
+      if (channel === "website") {
+        logger.info(`[onMessageCreated] Channel "website" — reply stored in dashboard only`);
+        return;
+      }
+
       const respondentDoc = await db.doc(`respondents/${ticket.respondentId}`).get();
       if (!respondentDoc.exists) { logger.error("[onMessageCreated] Respondent not found:", ticket.respondentId); return; }
       const respondent = respondentDoc.data()!;
@@ -408,6 +416,51 @@ async function parseFonnteAttachments(body: any): Promise<any[]> {
   }
   return attachments;
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// 2b. Website Chat Widget  (public/widget.js posts here)
+//     URL: https://asia-southeast1-reachthesoul-prod.cloudfunctions.net/webhookWidget?org=<orgId>
+// ────────────────────────────────────────────────────────────────────────────
+export const webhookWidget = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") { res.status(405).send("Method Not Allowed"); return; }
+  const orgId = String(req.query.org ?? "").trim();
+  if (!orgId) { res.status(400).json({ error: "Missing org parameter" }); return; }
+
+  try {
+    const body = req.body ?? {};
+    const visitorId = String(body.sender ?? "").trim().substring(0, 100);
+    const name = (String(body.name ?? "").trim() || "Website Visitor").substring(0, 100);
+    const message = String(body.message ?? "").trim().substring(0, 4000);
+
+    if (!visitorId) { res.status(400).json({ error: "Missing sender (visitor id)" }); return; }
+    if (!message) { res.status(200).json({ status: "ok", skipped: "empty" }); return; }
+
+    // Multi-tenant guard: only accept messages for organizations that exist,
+    // so a random ?org= value can't create orphan tickets.
+    const orgDoc = await getDb().collection("organizations").doc(orgId).get();
+    if (!orgDoc.exists) {
+      logger.warn(`[webhookWidget] Unknown org: ${orgId}`);
+      res.status(404).json({ error: "Unknown organization" });
+      return;
+    }
+
+    logger.info(`[webhookWidget] org=${orgId} visitor=${visitorId} msg="${message.substring(0, 50)}..."`);
+
+    await processIncomingMessage({
+      orgId,
+      channel: "website",
+      senderId: visitorId,
+      senderName: name,
+      message,
+      rawPayload: body,
+    });
+
+    res.status(200).json({ status: "ok" });
+  } catch (err) {
+    logger.error("[webhookWidget] Error:", err);
+    res.status(500).json({ error: "Internal error" });
+  }
+});
 
 // ────────────────────────────────────────────────────────────────────────────
 // 3. Instagram Direct Message (Meta)
