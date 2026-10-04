@@ -9,13 +9,12 @@ import { useOrgStore } from "@/store/org-store";
  * Mounted once in app/layout.tsx so it shows on every page — public pages AND the
  * dashboard — instead of WhatsApp, whose replies Meta now charges per message.
  *
+ * - Shown to everyone (visitors, clients, and the RTS team) on every page.
  * - Logged-in users: support tickets carry their name + organization (window.rtsWidgetVisitor).
- * - Platform admins (the RTS team) don't see it — they answer these chats in the dashboard.
  */
 export function RtsSupportWidget() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const activeOrg = useOrgStore((s) => s.activeOrg);
-  const hide = !!currentUser?.isPlatformAdmin;
 
   // Tell the widget who is chatting (read by public/widget.js when sending)
   useEffect(() => {
@@ -32,20 +31,6 @@ export function RtsSupportWidget() {
     }
   }, [currentUser, activeOrg]);
 
-  // Hide/show the floating button + window (the widget DOM survives client-side navigation)
-  useEffect(() => {
-    const apply = () => {
-      for (const id of ["rts-widget-btn", "rts-widget-box"]) {
-        const el = document.getElementById(id);
-        if (el) el.style.visibility = hide ? "hidden" : "";
-      }
-    };
-    apply();
-    const t = window.setTimeout(apply, 1500); // widget loads lazily
-    return () => window.clearTimeout(t);
-  }, [hide]);
-
-  if (hide) return null;
 
   return (
     <Script
