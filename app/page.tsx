@@ -223,7 +223,12 @@ const STYLES = `
     .footer-brand .logo-icon span { font-family: var(--font-body); font-weight: 700; font-size: 10px; color: var(--white); letter-spacing: 0.5px; margin-left: 1px; }
     .footer-brand .logo-text { font-family: var(--font-display); font-size: 16px; color: var(--white); }
     .footer-brand p { font-size: 13px; color: var(--gray-400); line-height: 1.7; }
-    .footer-links { display: flex; gap: 48px; }
+    .footer-links { display: flex; gap: 40px; flex-wrap: wrap; }
+    .traditions { margin-top: 48px; text-align: center; padding: 28px 24px; border: 1px solid var(--gray-200); border-radius: 16px; background: linear-gradient(180deg, rgba(45,212,191,0.04), transparent); }
+    .traditions h3 { font-family: var(--font-display); font-size: 22px; color: var(--navy); margin-bottom: 6px; }
+    .traditions p { font-size: 14px; color: var(--gray-500); margin: 0 auto 16px; max-width: 560px; }
+    .tradition-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .tradition-tags span { font-size: 12px; font-weight: 600; color: var(--navy); background: var(--white); border: 1px solid var(--gray-200); border-radius: 999px; padding: 6px 12px; }
     .footer-links h4 { font-size: 12px; font-weight: 600; color: var(--gray-400); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
     .footer-links a { display: block; font-size: 13px; color: var(--gray-400); padding: 4px 0; transition: color 0.2s; }
     .footer-links a:hover { color: var(--white); }
@@ -282,6 +287,7 @@ const BODY = `
       <a href="#features">Features</a>
       <a href="#how">How It Works</a>
       <a href="#pricing">Pricing</a>
+      <a href="/blog">Resources</a>
       <a href="#contact">Contact</a>
     </div>
     <div class="nav-cta">
@@ -418,6 +424,14 @@ const BODY = `
         <div class="icon">👥</div>
         <h3>Team & Call Management</h3>
         <p>Assign counselors, set up shift schedules, manage workload. Built-in softphone for voice calls with recording and call logs. Invite your team with a link — they're up and running in minutes.</p>
+      </div>
+    </div>
+
+    <div class="traditions fade-up">
+      <h3>Built for every denomination</h3>
+      <p>Your AI first response and your care workflow follow <strong>your</strong> theology and pastoral approach &mdash; whatever your denomination or ministry.</p>
+      <div class="tradition-tags">
+        <span>Evangelical</span><span>Reformed</span><span>Presbyterian</span><span>Baptist</span><span>Methodist</span><span>Lutheran</span><span>Anglican</span><span>Pentecostal</span><span>Charismatic</span><span>Catholic</span><span>Orthodox</span><span>Non-denominational</span><span>Mission organizations</span><span>Media ministries</span>
       </div>
     </div>
   </div>
@@ -649,12 +663,6 @@ const BODY = `
   </div>
 </section>
 
-<!-- FLOATING WHATSAPP BUTTON -->
-<a href="https://wa.me/6285217971464?text=Hi%2C%20I%27m%20interested%20in%20ReachTheSoul%20for%20my%20church.%20Can%20you%20tell%20me%20more%3F" target="_blank" class="wa-float" aria-label="Chat on WhatsApp">
-  <svg viewBox="0 0 24 24" fill="white" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-  <span class="wa-float-label">Chat with us</span>
-</a>
-
 <!-- FOOTER -->
 <footer>
   <div class="container">
@@ -675,7 +683,23 @@ const BODY = `
           <a href="/register" onclick="if(window.gtag)gtag('event','start_free_click',{location:'footer'})">Sign Up Free</a>
         </div>
         <div>
-          <h4>Resources</h4>
+          <h4>Solutions</h4>
+          <a href="/prayer-crm">Prayer Request Software</a>
+          <a href="/pastoral-care-platform">Pastoral Care Software</a>
+          <a href="/church-counseling-software">Church Counseling Software</a>
+          <a href="/church-whatsapp-management">WhatsApp for Churches</a>
+          <a href="/church-crisis-response">Pastoral Escalation Alerts</a>
+        </div>
+        <div>
+          <h4>Learn</h4>
+          <a href="/blog">Blog &amp; Resources</a>
+          <a href="/blog/why-every-church-needs-a-crm">Why Every Church Needs a CRM</a>
+          <a href="/blog/best-crm-for-churches-and-ministries">Best CRM for Churches</a>
+          <a href="/blog/what-happens-when-church-has-no-follow-up-system">Church Follow-Up System</a>
+          <a href="/blog/whatsapp-crm-for-church-outreach">WhatsApp for Church Outreach</a>
+        </div>
+        <div>
+          <h4>Company</h4>
   <a href="mailto:hello@reachthesoul.org">Contact Us</a>
   <a href="mailto:hello@reachthesoul.org">Partner With Us</a>
   <a href="/privacy">Privacy Policy</a>

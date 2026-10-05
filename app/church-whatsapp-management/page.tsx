@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { SEOLandingPage } from "@/components/seo/SEOLandingPage";
 
 export const metadata: Metadata = {
-  title: "Church WhatsApp Management — One Inbox for All Your Ministry Messages",
+  title: "WhatsApp for Churches — One Shared Inbox for Your Ministry",
   description: "Stop managing church WhatsApp from personal phones. ReachTheSoul connects your WhatsApp Business to a shared dashboard with AI auto-reply, ticket tracking, and team collaboration.",
-  keywords: ["church WhatsApp management", "church WhatsApp integration", "WhatsApp ministry", "church WhatsApp CRM", "WhatsApp for churches", "church messaging platform", "ministry WhatsApp management"],
+  keywords: ["WhatsApp for churches", "church WhatsApp inbox", "omnichannel inbox for churches", "church WhatsApp management", "church WhatsApp integration", "WhatsApp ministry", "church WhatsApp CRM", "WhatsApp for churches", "church messaging platform", "ministry WhatsApp management"],
   openGraph: {
-    title: "Church WhatsApp Management — Shared Inbox with AI Auto-Reply | ReachTheSoul",
+    title: "WhatsApp for Churches — Shared Ministry Inbox | ReachTheSoul",
     description: "Your church WhatsApp shouldn't live on one person's phone. Shared inbox. AI auto-reply. Team collaboration.",
     url: "https://reachthesoul.org/church-whatsapp-management",
   },
@@ -57,7 +57,7 @@ export default function ChurchWhatsAppManagementPage() {
         { title: "No more phone dependency", desc: "When the admin is on vacation, WhatsApp doesn’t stop. When the pastor changes phones, nothing is lost. The system runs on the platform, not on personal devices." },
         { title: "Unlimited incoming messages", desc: "Every plan includes unlimited incoming WhatsApp messages. Your respondents can message as much as they need. Replies you send are billed by Meta per message, directly to your WhatsApp Business account — ReachTheSoul adds no markup, and your dashboard shows a live cost estimate." },
         { title: "Works alongside Instagram & Facebook", desc: "ReachTheSoul isn’t just WhatsApp — it’s omnichannel. Instagram DMs, Facebook messages, and website chat all flow into the same inbox. One dashboard for all your digital ministry." },
-        { title: "We set it up for you", desc: "WhatsApp Business API integration can be tricky. We handle the entire setup for you — within 12 hours of signing up. No technical knowledge required." },
+        { title: "We set it up for you", desc: "Connect your number in a few clicks through Meta's official secure sign-up — no tokens or code. Prefer help? Our team can walk you through the setup." },
       ]}
       ctaTitle="Take your church WhatsApp from chaos to clarity"
       ctaDesc="Shared inbox. AI auto-reply. Ticket tracking. Zero messages lost. We set it up for you."

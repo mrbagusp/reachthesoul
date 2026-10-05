@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { SEOLandingPage } from "@/components/seo/SEOLandingPage";
 
 export const metadata: Metadata = {
-  title: "Prayer CRM — Track Every Prayer Request & Follow-Up",
+  title: "Church Prayer Request Software — Track Every Prayer & Follow-Up",
   description: "Stop losing prayer requests in WhatsApp groups. ReachTheSoul is a prayer CRM that tracks every request, assigns follow-ups, and ensures no one is forgotten. Free to start.",
-  keywords: ["prayer CRM", "prayer request management", "prayer tracking software", "church prayer management", "prayer follow up system", "prayer request tracker"],
+  keywords: ["church prayer request software", "prayer request software", "prayer CRM", "prayer request management", "prayer tracking software", "church prayer management", "prayer follow up system", "prayer request tracker"],
   openGraph: {
-    title: "Prayer CRM — Track Every Prayer Request & Follow-Up | ReachTheSoul",
+    title: "Church Prayer Request Software | ReachTheSoul",
     description: "Stop losing prayer requests in WhatsApp groups. A CRM built specifically for prayer ministry teams.",
     url: "https://reachthesoul.org/prayer-crm",
   },
@@ -56,7 +56,7 @@ export default function PrayerCRMPage() {
         { title: "Built for ministry, not sales teams", desc: "Unlike Salesforce or HubSpot, ReachTheSoul speaks the language of pastoral care. Prayer points, not deals. Respondents, not leads. Progress steps, not pipeline stages." },
         { title: "AI that prays, not just replies", desc: "Our AI doesn’t send generic auto-responses. It listens, empathizes, shares Scripture, and knows when to escalate to a human. Trained specifically for pastoral conversation." },
         { title: "WhatsApp-first (because that’s where your people are)", desc: "Most church communication happens on WhatsApp — not email. ReachTheSoul is built around WhatsApp from day one, with Instagram, Facebook, and website chat as bonus channels." },
-        { title: "Founding Church pricing — locked forever", desc: "Churches that join now keep their pricing permanently as founding partners. Start free, upgrade to $29/mo when ready. Prices will increase for future subscribers." },
+        { title: "Start free, upgrade when ready", desc: "Begin on the free plan with no credit card. Upgrade to Starter ($49/mo) when you are ready for WhatsApp and AI first response. If cost is a barrier for your ministry, talk to us — we will find a way together." },
       ]}
       ctaTitle="Stop losing prayer requests"
       ctaDesc="Start free. Connect WhatsApp. See every prayer request in one dashboard. Your first 50 respondents are free — forever."

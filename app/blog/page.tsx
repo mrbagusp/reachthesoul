@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Church Ministry Resources | ReachTheSoul Blog',
+  title: 'Church Ministry Resources & Guides',
   description: 'Practical guides for churches and ministries on pastoral care, counseling follow-up, WhatsApp outreach, prayer CRM, and ministry management systems.',
   alternates: { canonical: 'https://reachthesoul.org/blog' },
   openGraph: {

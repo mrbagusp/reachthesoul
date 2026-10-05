@@ -1,54 +1,99 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <!-- Main pages -->
   <url>
     <loc>https://reachthesoul.org</loc>
-    <lastmod>2026-05-24</lastmod>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://reachthesoul.org/register</loc>
-    <lastmod>2026-05-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://reachthesoul.org/login</loc>
-    <lastmod>2026-05-24</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-
-  <!-- SEO landing pages -->
-  <url>
     <loc>https://reachthesoul.org/prayer-crm</loc>
-    <lastmod>2026-05-24</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://reachthesoul.org/church-counseling-software</loc>
-    <lastmod>2026-05-24</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
     <loc>https://reachthesoul.org/pastoral-care-platform</loc>
-    <lastmod>2026-05-24</lastmod>
-    <changefreq>weekly</changefreq>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://reachthesoul.org/church-counseling-software</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://reachthesoul.org/church-whatsapp-management</loc>
-    <lastmod>2026-05-24</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
   </url>
   <url>
     <loc>https://reachthesoul.org/church-crisis-response</loc>
-    <lastmod>2026-05-24</lastmod>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://reachthesoul.org/blog</loc>
+    <lastmod>2026-10-05</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://reachthesoul.org/blog/why-every-church-needs-a-crm</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://reachthesoul.org/blog/best-crm-for-churches-and-ministries</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://reachthesoul.org/blog/what-happens-when-church-has-no-follow-up-system</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://reachthesoul.org/blog/how-to-manage-counseling-follow-up-for-ministry</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://reachthesoul.org/blog/whatsapp-crm-for-church-outreach</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://reachthesoul.org/register</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://reachthesoul.org/privacy</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://reachthesoul.org/terms</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://reachthesoul.org/refund</loc>
+    <lastmod>2026-10-05</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
 </urlset>

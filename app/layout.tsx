@@ -5,10 +5,10 @@ import { RtsSupportWidget } from '@/components/layout/RtsSupportWidget'
 
 export const metadata: Metadata = {
   title: {
-    default: 'ReachTheSoul — Prayer & Counseling CRM that Follows Every Soul from First Message to Lasting Faith',
+    default: 'Church Prayer Request & Pastoral Care Software | ReachTheSoul',
     template: '%s | ReachTheSoul',
   },
-  description: 'Make sure no prayer request, counseling need, or faith decision goes unanswered. ReachTheSoul is a prayer and counseling CRM with an omnichannel inbox — WhatsApp, Instagram, Facebook, website chat, and voice calls — with 24/7 AI first response and human counselor escalation. Then track each person\'s journey from first message through prayer, counseling, and spiritual growth, so no one is followed up once and forgotten. Built for churches and ministries of any size.',
+  description: 'Prayer request and pastoral care software for churches and ministries. One inbox for WhatsApp, Instagram, Facebook and website chat, with follow-up and discipleship tracking.',
   other: {
     'facebook-domain-verification': '9qqpzy8cg5bd70dh0mpvyhvjaxnpr0',
   },
@@ -73,7 +73,7 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://reachthesoul.org',
     siteName: 'ReachTheSoul',
-    title: 'ReachTheSoul — Every Prayer Heard. Every Soul Followed Home.',
+    title: 'ReachTheSoul — Church Prayer Request & Pastoral Care Software',
     description: 'From first message to lasting faith — track every soul\'s journey. Prayer and counseling CRM for churches and ministries: omnichannel inbox (WhatsApp, Instagram, Facebook, website chat, voice calls), 24/7 AI first response, counseling journal, ministry progress steps, and follow-up that never forgets.',
     images: [
       {
@@ -86,7 +86,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ReachTheSoul — Every Prayer Heard. Every Soul Followed Home.',
+    title: 'ReachTheSoul — Church Prayer Request & Pastoral Care Software',
     description: 'Track every soul from first message to lasting faith. Prayer & counseling CRM: omnichannel inbox (WhatsApp + Instagram + Facebook + calls), 24/7 AI first response, counseling journal, discipleship follow-up.',
     images: ['/og-image.png'],
     creator: '@reachthesoul',

@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { SEOLandingPage } from "@/components/seo/SEOLandingPage";
 
 export const metadata: Metadata = {
-  title: "Church Crisis Response System — AI Detects, Alerts, Saves Lives",
-  description: "When someone sends your church a crisis message at 2 AM, who responds? ReachTheSoul's AI detects self-harm, suicidal intent, and severe distress — then instantly alerts your pastoral team via WhatsApp.",
-  keywords: ["church crisis response", "church crisis management", "pastoral crisis response", "church suicide prevention", "church mental health", "crisis counseling church", "church emergency response system"],
+  title: "Pastoral Escalation Alerts — Notify Your Care Team Instantly",
+  description: "Urgent messages shouldn't wait until Monday. ReachTheSoul flags messages that match your escalation keywords and instantly alerts your on-call pastoral team on WhatsApp, with full context.",
+  keywords: ["pastoral escalation alerts", "church urgent message alerts", "on-call pastor notification", "church crisis response", "pastoral care escalation"],
   openGraph: {
-    title: "Church Crisis Response System — AI That Detects & Escalates | ReachTheSoul",
+    title: "Pastoral Escalation Alerts | ReachTheSoul",
     description: "AI detects crisis language. Instantly alerts your pastoral team via WhatsApp. Because some messages can’t wait until morning.",
     url: "https://reachthesoul.org/church-crisis-response",
   },

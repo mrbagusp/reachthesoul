@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { SEOLandingPage } from "@/components/seo/SEOLandingPage";
 
 export const metadata: Metadata = {
-  title: "Church Counseling Software — AI-Powered Pastoral Counseling Platform",
-  description: "Manage counseling conversations across WhatsApp, Instagram & web. AI provides instant first response, detects crisis situations, and escalates to your pastoral team. Built for churches.",
+  title: "Church Counseling Software — Counseling Notes, Follow-Up & Team Inbox",
+  description: "Manage pastoral counseling conversations across WhatsApp, Instagram and web chat. Counseling journal, follow-up tracking, and a shared inbox for your team. Built for churches and ministries.",
   keywords: ["church counseling software", "pastoral counseling platform", "christian counseling software", "church counseling management", "online counseling for churches", "pastoral care software"],
   openGraph: {
-    title: "Church Counseling Software — AI-Powered Pastoral Care | ReachTheSoul",
+    title: "Church Counseling Software | ReachTheSoul",
     description: "AI handles the first response. Your team handles the deeper care. No message left unanswered.",
     url: "https://reachthesoul.org/church-counseling-software",
   },

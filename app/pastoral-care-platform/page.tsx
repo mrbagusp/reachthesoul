@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { SEOLandingPage } from "@/components/seo/SEOLandingPage";
 
 export const metadata: Metadata = {
-  title: "Pastoral Care Platform — Manage Your Entire Pastoral Care Workflow",
+  title: "Pastoral Care Software for Churches & Ministries",
   description: "The complete pastoral care platform for churches. Track respondents, manage prayer requests, coordinate counseling, and monitor team performance. AI-powered. WhatsApp-ready.",
-  keywords: ["pastoral care platform", "pastoral care software", "pastoral care management", "church care management", "pastoral care tracking", "church pastoral care system"],
+  keywords: ["pastoral care software", "pastoral care CRM", "pastoral care platform", "pastoral care management", "church care management", "pastoral care tracking", "church pastoral care system"],
   openGraph: {
-    title: "Pastoral Care Platform — Complete Church Care Infrastructure | ReachTheSoul",
+    title: "Pastoral Care Software for Churches & Ministries | ReachTheSoul",
     description: "From first contact to long-term discipleship. One platform for your entire pastoral care workflow.",
     url: "https://reachthesoul.org/pastoral-care-platform",
   },
