@@ -14,7 +14,7 @@ function getDb(): Firestore {
   return getApp().firestore();
 }
 
-export type Channel = "whatsapp_meta" | "whatsapp_fonnte" | "instagram" | "facebook" | "call" | "website";
+export type Channel = "whatsapp_meta" | "whatsapp_fonnte" | "instagram" | "facebook" | "call" | "website" | "email";
 export type AttachmentType = "image" | "video" | "audio" | "document" | "sticker" | "other";
 
 export type Attachment = {
@@ -36,6 +36,11 @@ export type IncomingMessage = {
   message: string;
   attachments?: Attachment[];
   rawPayload: object;
+  // ── Email channel extras ──
+  senderEmail?: string;                 // saved on the respondent profile
+  ticketIdHint?: string;                // continue this ticket (e.g. email reply with [RTS-xxxxx])
+  ticketSubject?: string;               // subject for a NEW ticket (e.g. email subject)
+  messageMeta?: Record<string, any>;    // extra fields stored on the message doc (e.g. email headers)
   // ── Multi-account fields (from social_accounts lookup) ──
   socialAccountId?: string;   // ID of the social_accounts document
   programName?: string;       // denormalized for fast UI rendering
@@ -48,6 +53,7 @@ const CHANNEL_LEAD_SOURCE: Record<Channel, string> = {
   facebook:        "Facebook",
   call:            "Telepon",
   website:         "Website Chat",
+  email:           "Email",
 };
 
 // ── Respondent identity helpers (dedup fix) ─────────────────────────────────
@@ -61,6 +67,7 @@ function normalizeSenderKey(channel: Channel, senderId: string): string {
   if (channel === "whatsapp_meta" || channel === "whatsapp_fonnte") {
     return raw.replace(/\D/g, "");
   }
+  if (channel === "email") return raw.toLowerCase();
   return raw;
 }
 
@@ -200,6 +207,7 @@ export async function processIncomingMessage(data: IncomingMessage) {
     const updatePayload: Record<string, any> = {
       fullName: data.senderName,
       ...(data.senderPhone ? { phone: data.senderPhone } : {}),
+      ...(data.senderEmail ? { email: data.senderEmail } : {}),
       // Backfill identity fields for legacy docs (idempotent for new ones).
       senderKey,
       channelFamily: family,
@@ -220,6 +228,7 @@ export async function processIncomingMessage(data: IncomingMessage) {
       orgId,
       fullName: data.senderName,
       phone: data.senderPhone ?? null,
+      ...(data.senderEmail ? { email: data.senderEmail } : {}),
       channel: data.channel,
       channelSenderId: data.senderId,
       senderKey,               // NEW — normalized identity key
@@ -236,7 +245,20 @@ export async function processIncomingMessage(data: IncomingMessage) {
   }
 
   // 2. Find active ticket or create new one (with multi-account scoping)
-  let ticketId = await findActiveTicket(respondentId, orgId, data.socialAccountId, data.channel);
+  let ticketId: string | null = null;
+  // Explicit thread reference (e.g. an email reply carrying [RTS-00123]) wins
+  // over the 24h window, as long as the ticket belongs to this org + respondent.
+  if (data.ticketIdHint) {
+    const hinted = await db.doc(`tickets/${data.ticketIdHint}`).get();
+    const h = hinted.data();
+    if (hinted.exists && h?.orgId === orgId && h?.respondentId === respondentId) {
+      ticketId = hinted.id;
+      if (h.status === "resolved" || h.status === "closed") {
+        await hinted.ref.update({ status: "open", reopenedAt: FieldValue.serverTimestamp() });
+      }
+    }
+  }
+  if (!ticketId) ticketId = await findActiveTicket(respondentId, orgId, data.socialAccountId, data.channel);
   let ticketNumber: string;
 
   const previewText = (() => {
@@ -266,7 +288,8 @@ export async function processIncomingMessage(data: IncomingMessage) {
     });
   } else {
     ticketNumber = await nextTicketNumber(orgId);
-    const subject = previewText.length > 80 ? previewText.substring(0, 80) + "..." : previewText;
+    const baseSubject = (data.ticketSubject ?? "").trim() || previewText;
+    const subject = baseSubject.length > 80 ? baseSubject.substring(0, 80) + "..." : baseSubject;
 
     const ticketRef = db.collection("tickets").doc();
     ticketId = ticketRef.id;
@@ -312,6 +335,7 @@ export async function processIncomingMessage(data: IncomingMessage) {
     messageData.attachments = data.attachments;
     messageData.hasAttachments = true;
   }
+  if (data.messageMeta) Object.assign(messageData, data.messageMeta);
   await db.collection(`tickets/${ticketId}/messages`).add(messageData);
 
   return { respondentId, ticketId, ticketNumber };

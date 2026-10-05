@@ -152,7 +152,7 @@ export default function TicketsPage() {
     if (ch) {
       const MAP: Record<string, string> = {
         whatsapp_meta: "WhatsApp", whatsapp_fonnte: "WhatsApp",
-        instagram: "Instagram", facebook: "Facebook", call: "Call", website: "Website",
+        instagram: "Instagram", facebook: "Facebook", call: "Call", website: "Website", email: "Email",
       };
       return MAP[ch] ?? ch;
     }

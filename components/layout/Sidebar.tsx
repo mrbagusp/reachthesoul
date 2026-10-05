@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
+import { Mail,
   LayoutDashboard, Users, Ticket, MessageSquare,
   BarChart2, Settings, Tag, Globe, CheckCircle2, ListOrdered,
   ChevronDown, UserCog, LogOut, Plug, CircleUser, X, CalendarDays, Bot, PhoneCall, CreditCard, Shield, Tv2,
@@ -48,6 +48,7 @@ const navItems: NavItem[] = [
       { label: "Social Accounts", href: "/dashboard/admin/social-accounts", icon: Share2 },
       { label: "WhatsApp Templates", href: "/dashboard/admin/whatsapp-templates", icon: MessageSquare },
       { label: "Chat Widget",  href: "/dashboard/admin/widget",          icon: MessageSquare },
+      { label: "Email Inbox",  href: "/dashboard/admin/email",           icon: Mail },
       { label: "AI Settings",  href: "/dashboard/admin/ai-settings",    icon: Bot },
       { label: "Call Settings", href: "/dashboard/admin/call-settings", icon: PhoneCall },
     ],

@@ -18,6 +18,7 @@ import type { SocialAccountDoc } from "./social-accounts";
 import { verifyMetaSignature } from "./verify-signature";
 import { parseWhatsappMessage, parseMessengerMessage } from "./meta-media";
 import { recordWhatsappSend } from "./wa-usage";
+import { sendTicketEmailReply } from "./email-channel";
 import * as admin from "firebase-admin";
 
 // Re-export scheduled function so Firebase deploys it
@@ -38,6 +39,8 @@ export { waConnectStart, waConnectCallback } from "./whatsapp-onboard";
 export { checkSocialAccountTokenHealth } from "./token-health-check";
 // WhatsApp fees: pull Meta's own pricing analytics (approximate charges, free vs paid)
 export { syncWhatsappPricingScheduled, syncWhatsappPricingNow } from "./wa-pricing-sync";
+// Email channel: inbound (Resend webhook), setup callables
+export { webhookEmailInbound, listEmailInboxes, createEmailInbox, updateEmailInbox, sendEmailForwardingTest } from "./email-channel";
 
 // Set region to asia-southeast1 (Singapore) — closest to Indonesia
 setGlobalOptions({ region: "asia-southeast1" });
@@ -170,6 +173,18 @@ export const onMessageCreated = onDocumentCreated(
       if (!respondentDoc.exists) { logger.error("[onMessageCreated] Respondent not found:", ticket.respondentId); return; }
       const respondent = respondentDoc.data()!;
       const phone = respondent.phone ?? respondent.channelSenderId ?? "";
+
+      // ── Email: reply from the org's ReachTheSoul inbox (threads via [RTS-xxxxx]) ──
+      if (channel === "email") {
+        const { account } = await getOutboundCredentials(ticket, orgId);
+        await sendTicketEmailReply({
+          ticketId, ticket, respondent,
+          account: account as any,
+          content: String(message.content ?? ""),
+          messageRef: event.data?.ref,
+        });
+        return;
+      }
 
       if (!phone && channel !== "facebook" && channel !== "instagram") {
         logger.warn("[onMessageCreated] No phone/senderId for respondent");
@@ -900,7 +915,14 @@ export const onRespondentMessage = onDocumentCreated(
         channel === "facebook" ? "Facebook" :
         channel === "instagram" ? "Instagram" :
         channel === "call" ? "Call" :
-        channel === "website" ? "Website" : channel;
+        channel === "website" ? "Website" :
+        channel === "email" ? "Email" : channel;
+      // Email AI auto-reply is OFF unless explicitly enabled (forwarded mail can include
+      // newsletters/notifications that should not get an automatic answer).
+      if (channel === "email" && channelToggles["Email"] !== true) {
+        logger.info(`[onRespondentMessage] AI auto-reply not enabled for Email`);
+        return;
+      }
       if (channelToggles[channelKey] === false) {
         logger.info(`[onRespondentMessage] AI disabled for channel ${channelKey}`);
         return;

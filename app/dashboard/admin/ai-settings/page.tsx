@@ -70,6 +70,7 @@ const DEFAULT_SETTINGS: AISettings = {
     Instagram: true,
     Facebook: true,
     Website: true,
+    Email: false,
     Call: false,
   },
 };
