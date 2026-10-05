@@ -345,10 +345,9 @@ const BODY = `
       <div class="channel-chip">
         <svg viewBox="0 0 24 24" fill="#F59E0B"><path d="M3 5c0-.6.4-1 1-1h16c.6 0 1 .4 1 1v14c0 .6-.4 1-1 1H4c-.6 0-1-.4-1-1V5zm2 1.4V18h14V6.4l-7 4.7-7-4.7zm.9-1.4l6.1 4.1L18.1 5H5.9z"/></svg>
         Email
-        <span class="soon">SOON</span>
       </div>
       <div class="channel-chip">
-        <svg viewBox="0 0 24 24" fill="#243B5C"><path d="M4 4h16c.6 0 1 .4 1 1v11c0 .6-.4 1-1 1H8l-4 4V5c0-.6.4-1 1-1zm3 5v2h10V9H7zm0 3.5V14h7v-1.5H7z"/></svg>
+        <svg viewBox="0 0 24 24" fill="#60A5FA"><path d="M4 4h16c.6 0 1 .4 1 1v11c0 .6-.4 1-1 1H8l-4 4V5c0-.6.4-1 1-1zm3 5v2h10V9H7zm0 3.5V14h7v-1.5H7z"/></svg>
         Live Chat
       </div>
     </div>
