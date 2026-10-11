@@ -3,7 +3,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as admin from "firebase-admin";
 import { logger } from "firebase-functions/v2";
-import { sendEmail, renderTemplate, wrapInEmailTemplate } from "./emailService";
+import { sendEmail, renderTemplate, wrapInEmailTemplate, detectEmailLang } from "./emailService";
 
 function getApp(): admin.app.App {
   if (admin.apps.length) return admin.apps[0]!;
@@ -81,10 +81,26 @@ async function processBatch(batchSize = 15): Promise<{ sent: number; failed: num
 
       if (r.channel === "email" && r.email) {
         try {
-          const body = renderTemplate(campaign.templateBody, { name: r.name, church: r.church, city: r.city });
-          const subject = renderTemplate(campaign.subject || "", { name: r.name, church: r.church, city: r.city });
-          const html = wrapInEmailTemplate(body, subject);
-          const result = await sendEmail({ to: r.email, subject, html });
+          // Respect opt-outs (add the lowercase address as a doc id in `email_unsubscribes`)
+          const emailKey = String(r.email).trim().toLowerCase();
+          const optedOut = await getDb().doc(`email_unsubscribes/${emailKey}`).get();
+          if (optedOut.exists) {
+            await doc.ref.update({ status: "skipped", error: "unsubscribed", skippedAt: admin.firestore.FieldValue.serverTimestamp() });
+            continue;
+          }
+          const lang = detectEmailLang(`${campaign.subject || ""}\n${campaign.templateBody || ""}`);
+          const vars = {
+            name: r.name || (lang === "id" ? "Bapak/Ibu" : "there"),
+            church: r.church || (lang === "id" ? "gereja Anda" : "your church"),
+            city: r.city || "",
+          };
+          const body = renderTemplate(campaign.templateBody, vars);
+          const subject = renderTemplate(campaign.subject || "", vars);
+          const html = wrapInEmailTemplate(body, subject, { marketing: true, lang });
+          const result = await sendEmail({
+            to: r.email, subject, html,
+            headers: { "List-Unsubscribe": "<mailto:hello@reachthesoul.org?subject=unsubscribe>" },
+          });
           if (result.success) {
             await doc.ref.update({ status: "sent", sentAt: admin.firestore.FieldValue.serverTimestamp() });
             sent++;

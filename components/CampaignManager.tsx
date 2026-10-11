@@ -59,6 +59,62 @@ interface CustomTemplate {
 // ============================================================
 
 const EMAIL_TEMPLATES: Record<string, { label: string; subject: string; body: string }> = {
+  en_website_chat: {
+    label: "🇺🇸 Prayer & counseling chat (EN) — start here",
+    subject: "A prayer & counseling chat for {{church}}",
+    body: `Hi {{name}},
+
+Many people who need prayer or counsel will never call a church office or come forward after a service. But they will type a message, often late at night.
+
+ReachTheSoul adds a prayer and counseling chat to {{church}}'s website. Members and visitors can share a prayer request or ask to talk with someone, privately, at any hour. Every request goes to your care team's inbox, is assigned to a counselor, and gets a follow-up, so no one who reaches out is forgotten.
+
+You can also bring Instagram and Facebook messages and church email into the same inbox.
+
+It's free to start, no credit card: reachthesoul.org/register
+
+Would a 2-minute video of how it works be helpful? Just reply and I'll send it.
+
+Grace and peace,
+Bagus Prabangkara
+Founder, ReachTheSoul
+reachthesoul.org`,
+  },
+  en_social_dm: {
+    label: "🇺🇸 Instagram & Facebook DMs (EN)",
+    subject: "Prayer requests in {{church}}'s Instagram DMs",
+    body: `Hi {{name}},
+
+More people now ask churches for prayer through Instagram and Facebook messages than through prayer cards. Those DMs usually live on one volunteer's phone, and when that person is busy, requests wait.
+
+ReachTheSoul brings Instagram DMs, Facebook messages, a prayer and counseling chat on your website, and your church email into one private inbox for your care team. You can assign each request, keep confidential notes, and schedule follow-up, so no one falls through the cracks.
+
+An optional AI first response can acknowledge messages after hours. Your team always takes over for prayer and pastoral care.
+
+You can start free with the prayer chat on your website and add social media and email when you're ready: reachthesoul.org/register
+
+Happy to answer any questions. Just reply to this email.
+
+Grace and peace,
+Bagus Prabangkara
+Founder, ReachTheSoul
+reachthesoul.org`,
+  },
+  en_followup: {
+    label: "🇺🇸 Follow-up #2 (EN)",
+    subject: "Re: prayer requests at {{church}}",
+    body: `Hi {{name}},
+
+Just following up on my note from last week.
+
+One thing churches tell us helps the most: your website's prayer and contact forms already send emails. With ReachTheSoul, those emails can flow into the same inbox as your website's prayer chat and social media messages, so every request is tracked in one place and nobody has to check five apps.
+
+If this isn't a priority right now, no problem at all, and I won't keep emailing. If it is, setup takes about 10 minutes: reachthesoul.org/register
+
+Grace and peace,
+Bagus Prabangkara
+Founder, ReachTheSoul
+reachthesoul.org`,
+  },
   id_problem: {
     label: "🇮🇩 Sentuh Hati (ID)",
     subject: "Ada jiwa yang mengirim pesan jam 2 pagi ke gereja Anda. Siapa yang menjawab?",
@@ -83,64 +139,6 @@ Sistem onboarding kami akan memandu Bapak/Ibu langkah demi langkah setelah login
 
 Terima kasih 🙏
 Tim ReachTheSoul`,
-  },
-  en_story: {
-    label: "🇺🇸 Storytelling (EN)",
-    subject: "The prayer cards on your desk that never got a follow-up",
-    body: `Dear {{name}},
-
-Let me paint a picture you probably know too well.
-
-Sunday morning: your altar call is powerful. Dozens come forward. They fill out prayer cards. They cry. They feel seen.
-
-Monday morning: those cards sit on someone's desk. By Wednesday, half are forgotten. By next Sunday, new cards replace them.
-
-Meanwhile, throughout the week, messages are trickling in — a single mom on Instagram asking for prayer at midnight. A teenager on WhatsApp hinting at dark thoughts. A grieving widow leaving a message on your Facebook page.
-
-Most of these messages won't get a response for hours. Some never will.
-
-It's not because {{church}} doesn't care. It's because you don't have a system.
-
-ReachTheSoul is that system.
-
-We built a Prayer & Counseling platform specifically for churches that takes every prayer request — from WhatsApp, Instagram, Facebook, and your website — and brings them into one inbox where your team can see, respond, track, and follow up on every single soul.
-
-Our AI First Responder answers every message within minutes, 24/7, with empathy and aligned to your church's doctrine. When it detects a crisis, it immediately escalates to your human counselors.
-
-Every soul gets a counseling journal. Every conversation is tracked. No one falls through the cracks.
-
-Free to try. No credit card needed. Set up in minutes.
-Start now: reachthesoul.org/register
-
-One soul reached because your church responded in time — that's reason enough.
-
-God bless,
-ReachTheSoul Team`,
-  },
-  en_direct: {
-    label: "🇺🇸 Direct (EN)",
-    subject: "Someone messaged your church at 2 AM. Who answered?",
-    body: `Dear {{name}},
-
-I'm writing from ReachTheSoul — Prayer & Counseling Software for Churches and Ministries.
-
-One simple question: when someone messages {{church}} at 2 AM saying "please pray for me, I can't do this anymore" — who answers?
-
-For most churches, the honest answer is: no one, until the next morning.
-
-ReachTheSoul changes that.
-
-Our AI responds to every prayer request and counseling message within minutes — 24/7 — with empathy and in alignment with your church's doctrine. It doesn't replace your pastors. It makes sure no soul ever feels ignored.
-
-Every message from WhatsApp, Instagram, Facebook, and your website flows into one dashboard. Your counseling team can see the complete journey of every soul, assign follow-ups, and get instant alerts when the AI detects a crisis.
-
-Free to try. No credit card required.
-Sign up at: reachthesoul.org/register
-
-Our onboarding system will guide you step by step.
-
-God bless,
-ReachTheSoul Team`,
   },
   id_urgent: {
     label: "🇮🇩 Urgent & Data (ID)",
@@ -183,9 +181,9 @@ export default function CampaignManager() {
   const [tab, setTab] = useState<"create" | "campaigns">("campaigns");
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [campaignName, setCampaignName] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState("id_problem");
-  const [customSubject, setCustomSubject] = useState(EMAIL_TEMPLATES.id_problem.subject);
-  const [customBody, setCustomBody] = useState(EMAIL_TEMPLATES.id_problem.body);
+  const [selectedTemplate, setSelectedTemplate] = useState("en_website_chat");
+  const [customSubject, setCustomSubject] = useState(EMAIL_TEMPLATES.en_website_chat.subject);
+  const [customBody, setCustomBody] = useState(EMAIL_TEMPLATES.en_website_chat.body);
   const [channel, setChannel] = useState<"email" | "whatsapp" | "both">("email");
   const [sending, setSending] = useState(false);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -275,7 +273,7 @@ export default function CampaignManager() {
     if (!confirm("Hapus template ini?")) return;
     try {
       await deleteDoc(doc(db, "email_templates", id));
-      setSelectedTemplate("id_problem"); // reset to a built-in
+      setSelectedTemplate("en_website_chat"); // reset to a built-in
       setSuccessMsg("Template dihapus ✓");
       setTimeout(() => setSuccessMsg(""), 3000);
     } catch (err: any) {

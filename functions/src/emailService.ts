@@ -12,6 +12,7 @@ export interface EmailPayload {
   from?: string;
   replyTo?: string;
   tags?: { name: string; value: string }[];
+  headers?: Record<string, string>;
 }
 
 export interface EmailResult {
@@ -45,6 +46,7 @@ export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
         subject: payload.subject,
         html: payload.html,
         tags: payload.tags || [],
+        ...(payload.headers ? { headers: payload.headers } : {}),
       }),
     });
 
@@ -81,7 +83,30 @@ export function renderTemplate(
 /**
  * Wrap email body in a clean, branded HTML template
  */
-export function wrapInEmailTemplate(body: string, subject: string): string {
+/** Physical mailing address required in commercial email (US CAN-SPAM). */
+export const SENDER_POSTAL_ADDRESS =
+  "Blessing Media Global, D Java Residence Blok C2 No. 16, Kabupaten Bekasi, Jawa Barat 17836, Indonesia";
+
+/** Rough language guess so the button/footer match the email body (Indonesian vs English). */
+export function detectEmailLang(text: string): "id" | "en" {
+  const idHits = (text.match(/\b(dan|yang|untuk|gereja|Anda|kami|tidak|dengan|Shalom|Tuhan memberkati)\b/gi) ?? []).length;
+  return idHits >= 3 ? "id" : "en";
+}
+
+export interface WrapOptions {
+  /** Outreach/marketing email: adds opt-out line + postal address. */
+  marketing?: boolean;
+  lang?: "id" | "en";
+}
+
+export function wrapInEmailTemplate(body: string, subject: string, opts: WrapOptions = {}): string {
+  const lang = opts.lang ?? detectEmailLang(`${subject}\n${body}`);
+  const ctaLabel = lang === "id" ? "Coba Gratis Sekarang" : "Try ReachTheSoul Free";
+  const optOut = opts.marketing
+    ? (lang === "id"
+        ? `Tidak ingin menerima email seperti ini lagi? Balas email ini dengan kata "berhenti" atau <a href="mailto:hello@reachthesoul.org?subject=unsubscribe" style="color:#2d6a4f">klik di sini</a>.<br/>${SENDER_POSTAL_ADDRESS}<br/>`
+        : `Don't want emails like this? Reply "unsubscribe" or <a href="mailto:hello@reachthesoul.org?subject=unsubscribe" style="color:#2d6a4f">click here</a> and we won't email you again.<br/>${SENDER_POSTAL_ADDRESS}<br/>`)
+    : "";
   const htmlBody = body
     .split("\n\n").map(p => `<p style="margin:0 0 16px;line-height:1.7">${p}</p>`).join("")
     .replace(/\n/g, "<br/>");
@@ -100,7 +125,7 @@ export function wrapInEmailTemplate(body: string, subject: string): string {
           <tr>
             <td style="background:#2d6a4f;padding:28px 40px">
               <span style="color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px">ReachTheSoul</span><br/>
-              <span style="color:#a7d7c5;font-size:12px">Prayer & Counseling Software for Churches</span>
+              <span style="color:#a7d7c5;font-size:12px">${lang === "id" ? "Prayer & Counseling Software untuk Gereja" : "Prayer & Pastoral Care Software for Churches"}</span>
             </td>
           </tr>
           <tr>
@@ -111,14 +136,14 @@ export function wrapInEmailTemplate(body: string, subject: string): string {
           <tr>
             <td style="padding:0 40px 40px" align="center">
               <a href="https://reachthesoul.org/register" style="display:inline-block;background:#2d6a4f;color:#ffffff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px">
-                Coba Gratis Sekarang
+                ${ctaLabel}
               </a>
             </td>
           </tr>
           <tr>
             <td style="background:#f8f8f5;padding:24px 40px;border-top:1px solid #e5e5e0">
               <p style="margin:0;font-size:12px;color:#999;line-height:1.6">
-                ReachTheSoul — Where Every Soul Finds Care<br/>
+                ${optOut}ReachTheSoul — Where Every Soul Finds Care<br/>
                 <a href="https://reachthesoul.org" style="color:#2d6a4f">reachthesoul.org</a> · 
                 <a href="mailto:hello@reachthesoul.org" style="color:#2d6a4f">hello@reachthesoul.org</a>
               </p>
