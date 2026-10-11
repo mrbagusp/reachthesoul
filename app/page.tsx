@@ -693,6 +693,7 @@ const BODY = `
           <h4>Learn</h4>
           <a href="/blog">Blog &amp; Resources</a>
           <a href="/blog/why-every-church-needs-a-crm">Why Every Church Needs a CRM</a>
+          <a href="/blog/best-pastoral-care-software">Best Pastoral Care Software</a>
           <a href="/blog/best-crm-for-churches-and-ministries">Best CRM for Churches</a>
           <a href="/blog/what-happens-when-church-has-no-follow-up-system">Church Follow-Up System</a>
           <a href="/blog/whatsapp-crm-for-church-outreach">WhatsApp for Church Outreach</a>

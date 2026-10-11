@@ -29,6 +29,7 @@ export default function PastoralCarePlatformPage() {
         <p>Counseling notes live in someone's personal notebook. Prayer requests are scattered across WhatsApp groups. Follow-up commitments exist only in someone's memory. There's no visibility, no accountability, no way to know if someone slipped through the cracks.</p>
         <p>Meanwhile, the people who reached out — the single mom struggling with depression, the teenager questioning their faith, the couple on the edge of divorce — they’re waiting. And hoping someone remembers them.</p>
         <p><strong>Good intentions without a system will always produce inconsistent results.</strong> Your people deserve better. Your team deserves better.</p>
+        <p>Comparing options? Read our honest comparison of the <a href="/blog/best-pastoral-care-software">best pastoral care software for churches in 2026</a>.</p>
       `}
       problemStats={[
         { stat: "0%", desc: "Visibility most pastors have into their pastoral care pipeline. No dashboard. No data. No accountability." },

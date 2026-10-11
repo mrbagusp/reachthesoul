@@ -15,6 +15,11 @@ export const metadata: Metadata = {
 
 const posts = [
   {
+    slug: 'best-pastoral-care-software',
+    title: 'The Best Pastoral Care Software & CRM for Churches in 2026 (An Honest Comparison)',
+    description: 'ReachTheSoul, CareNote, Notebird, OurChurchCare and Planning Center People compared: features, pricing, and which church each one fits.',
+  },
+  {
     slug: 'why-every-church-needs-a-crm',
     title: "Why Every Church Needs a CRM (And Most Pastors Don't Realize It Until Someone Falls Through the Cracks)",
     description: 'Your church has a prayer and counseling ministry. But how many messages are sitting unanswered right now? Here is why a CRM changes everything.',
