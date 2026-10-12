@@ -17,7 +17,7 @@ const posts = [
   {
     slug: 'best-pastoral-care-software',
     title: 'The Best Pastoral Care Software & CRM for Churches in 2026 (An Honest Comparison)',
-    description: 'ReachTheSoul, CareNote, Notebird, OurChurchCare and Planning Center People compared: features, pricing, and which church each one fits.',
+    description: 'ReachTheSoul, CareNote, Notebird, Undershepherd, OurChurchCare and Planning Center People compared: features, pricing, and which church each one fits.',
   },
   {
     slug: 'why-every-church-needs-a-crm',

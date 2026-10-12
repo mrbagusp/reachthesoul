@@ -6,12 +6,12 @@ const URL = 'https://reachthesoul.org/blog/best-pastoral-care-software'
 
 export const metadata: Metadata = {
   title: 'Best Pastoral Care Software & CRM for Churches (2026 Comparison)',
-  description: 'An honest 2026 comparison of the best pastoral care software and church care CRMs: ReachTheSoul, CareNote, Notebird, OurChurchCare and Planning Center People. Features, pricing and who each one is for.',
+  description: 'An honest 2026 comparison of the best pastoral care software and church care CRMs: ReachTheSoul, CareNote, Notebird, Undershepherd, OurChurchCare and Planning Center People. Features, pricing and who each one is for.',
   keywords: ['best pastoral care software', 'pastoral care CRM', 'pastoral care software', 'church care software', 'church care team software', 'pastoral care software comparison'],
   alternates: { canonical: URL },
   openGraph: {
     title: 'Best Pastoral Care Software & CRM for Churches (2026)',
-    description: 'Five pastoral care tools compared honestly: what they do well, what they cost, and which church each one fits.',
+    description: 'Six pastoral care tools compared honestly: what they do well, what they cost, and which church each one fits.',
     url: URL,
     siteName: 'ReachTheSoul',
     type: 'article',
@@ -30,9 +30,24 @@ const rows = [
   { tool: 'ReachTheSoul', best: 'Churches receiving prayer requests by message, day and night', intake: 'WhatsApp, Instagram, Facebook, email, website chat', crisis: 'Yes, keyword + AI crisis detection (Growth plan)', price: 'Free; Starter $49/mo; Growth $149/mo' },
   { tool: 'CareNote', best: 'Established care teams with many volunteers and a ChMS already in place', intake: 'Requests, forms, texts, voicemail (Care Number)', crisis: 'Priority alerts in a daily briefing', price: 'Subscription; see vendor' },
   { tool: 'Notebird', best: 'Small pastoral teams that want a simple shared care log', intake: 'Entered by your team', crisis: 'Not a focus', price: 'From $12 per user/mo' },
+  { tool: 'Undershepherd', best: 'Solo pastors and small pastoral teams', intake: 'Entered by your team', crisis: 'Not a focus', price: 'From $10/mo' },
   { tool: 'OurChurchCare', best: 'Elder and deacon care of assigned households', intake: 'Entered by your team', crisis: 'Not a focus', price: '$9 to $49/mo' },
   { tool: 'Planning Center People', best: 'Churches already on Planning Center that need basic care follow-up', intake: 'Forms, notes, workflows', crisis: 'Not a focus', price: 'Free' },
 ]
+
+const TOOLS = ['ReachTheSoul', 'CareNote', 'Notebird', 'Undershepherd', 'OurChurchCare', 'Planning Center People']
+const matrix: { cap: string; vals: string[] }[] = [
+  { cap: 'Prayer requests arrive on their own from WhatsApp, Instagram, Facebook, email and website chat', vals: ['Yes', 'Partial (texts, voicemail)', 'No', 'No', 'No', 'Partial (forms)'] },
+  { cap: 'The full prayer or counseling conversation is saved automatically', vals: ['Yes', 'No (team logs notes)', 'No (team logs notes)', 'No (team logs notes)', 'No (team logs notes)', 'No (team logs notes)'] },
+  { cap: 'Someone is answered right away, even at night', vals: ['Yes (optional AI first response)', 'No', 'No', 'No', 'No', 'No'] },
+  { cap: 'Crisis messages escalated to a pastor', vals: ['Yes (Growth plan)', 'Partial (priority alerts)', 'No', 'No', 'No', 'No'] },
+  { cap: 'Each person\'s journey tracked: prayer, counseling, recovery, discipleship', vals: ['Yes (custom journey steps)', 'Partial (care workflow)', 'Partial (milestones)', 'Partial (tasks)', 'Partial (contact frequency)', 'Partial (workflows)'] },
+  { cap: 'Built for people outside your member directory, not only members', vals: ['Yes', 'Partial', 'No', 'No', 'No', 'Partial'] },
+  { cap: 'Syncs with your church management system', vals: ['No (CSV export)', 'Yes', 'Yes', 'Yes', 'No (CSV import)', 'Is a ChMS'] },
+]
+
+const cellTone = (v: string) =>
+  v.startsWith('Yes') || v === 'Is a ChMS' ? 'text-emerald-700' : v.startsWith('Partial') ? 'text-amber-700' : 'text-gray-500'
 
 export default function Page() {
   return (
@@ -77,6 +92,50 @@ export default function Page() {
 
       <Divider />
 
+      <H2>The Gap Most Pastoral Care Software Still Leaves</H2>
+
+      <P>Most pastoral care tools were designed for a world where care starts with the pastor: you visit someone, then you log a note. That is valuable. But in 2026, most care starts the other way around, with <Strong>someone reaching out to you</Strong>: a DM at midnight, a chat on your website, an email from a person who has never attended. That is where the older model breaks down.</P>
+
+      <P><Strong>1. The prayer center is still old-fashioned.</Strong> Prayer cards, web forms and inboxes that a staff member re-types into the system later, if they have time.<br />
+        <Strong>2. Counseling conversations are not recorded.</Strong> The real conversation happens on a pastor&apos;s personal phone or in a DM. The care tool only gets a summary, if someone remembers to write one.<br />
+        <Strong>3. Prayer progress is not tracked.</Strong> A request is marked &ldquo;contacted,&rdquo; and then nobody knows: Did they recover? Did they come back? Did they take a next step of faith?<br />
+        <Strong>4. Nights and weekends go unanswered.</Strong> A message sent at 2 AM waits until someone opens the office on Monday.<br />
+        <Strong>5. People outside the church don&apos;t fit.</Strong> Tools built around the member directory have no natural place for a seeker who asks for prayer once.</P>
+
+      <H3>How ReachTheSoul closes that gap</H3>
+      <P>&bull; <Strong>A modern prayer center:</Strong> prayer requests arrive on their own from WhatsApp, Instagram, Facebook, email and a prayer &amp; counseling chat on your website, straight into one shared inbox.<br />
+        &bull; <Strong>Every conversation recorded:</Strong> the full prayer and counseling conversation is saved on the person&apos;s profile, with private notes for your team.<br />
+        &bull; <Strong>Prayer progress tracked:</Strong> each person moves through journey steps you define (prayer, counseling, recovery, discipleship), with scheduled follow-ups and overdue alerts.<br />
+        &bull; <Strong>Answered at any hour:</Strong> an optional AI first response acknowledges people right away, and crisis messages are escalated to your pastoral team.<br />
+        &bull; <Strong>Members and seekers alike:</Strong> anyone who reaches out gets a profile and a care journey, whether they are in your directory or not.</P>
+
+      <H3>Capability comparison</H3>
+      <div className="overflow-x-auto -mx-4 px-4">
+        <table className="w-full text-sm border-collapse min-w-[860px]">
+          <thead>
+            <tr className="bg-gray-50 text-left text-gray-900">
+              <th className="p-3 border border-gray-200 font-semibold w-[220px]">Capability</th>
+              {TOOLS.map((t) => (
+                <th key={t} className="p-3 border border-gray-200 font-semibold">{t}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {matrix.map((row) => (
+              <tr key={row.cap} className="align-top">
+                <td className="p-3 border border-gray-200 text-gray-900">{row.cap}</td>
+                {row.vals.map((v, i) => (
+                  <td key={i} className={`p-3 border border-gray-200 ${cellTone(v)} ${i === 0 ? 'bg-blue-50/60 font-medium' : ''}`}>{v}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-sm text-gray-500">Based on each vendor&apos;s public information as of October 2026. &ldquo;Partial&rdquo; means the tool supports part of the capability, usually through manual entry.</p>
+
+      <Divider />
+
       <H2>What Pastoral Care Software Should Do</H2>
 
       <P>Pastoral care software is different from church management software. A ChMS answers &ldquo;Who are our members, and who came on Sunday?&rdquo; A pastoral care CRM answers &ldquo;Who reached out to us, and did we take care of them?&rdquo; Before comparing tools, it helps to know what good care software does:</P>
@@ -90,7 +149,7 @@ export default function Page() {
 
       <Divider />
 
-      <H2>The 5 Best Pastoral Care Software Options</H2>
+      <H2>The 6 Best Pastoral Care Software Options</H2>
 
       <H3>1. ReachTheSoul: Best for churches that receive care requests through messaging</H3>
       <P>ReachTheSoul is a prayer and pastoral care CRM built for churches, ministries and mission organizations. Its starting point is the conversation itself: WhatsApp, Instagram, Facebook Messenger, email and website chat land in one shared inbox, and every message becomes a tracked ticket with an owner and a status.</P>
@@ -101,25 +160,31 @@ export default function Page() {
       <H3>2. CareNote: Best for large volunteer care teams</H3>
       <P>CareNote is a dedicated pastoral care platform created by a pastor with an engineering background. It manages care requests from intake through assignment, care and follow-up, with a Care Action Center that surfaces unassigned and overdue needs.</P>
       <P><Strong>Strengths:</Strong> volunteers can accept assignments and report back by SMS or email without logging in; a daily priority briefing; voicemails can become care requests; meal coordination; integrations with Planning Center, Breeze, Rock RMS and Church Community Builder.</P>
-      <P><Strong>Limitations:</Strong> it is designed around your care team&apos;s workflow rather than receiving messages from social media or WhatsApp. Pricing is not listed in the public sources we reviewed.</P>
+      <P><Strong>Limitations:</Strong> it is designed around your care team&apos;s workflow rather than the conversation itself. Prayer requests from Instagram, Facebook, WhatsApp or website chat are not received directly, and counseling conversations are summarized in notes rather than recorded. Pricing is not listed in the public sources we reviewed.</P>
       <P><Strong>Pricing:</Strong> subscription; check the vendor&apos;s pricing page.</P>
 
       <H3>3. Notebird: Best simple care log for small pastoral teams</H3>
       <P>Notebird describes itself as easy-to-use pastoral care software for leaders and their teams. It focuses on recording visits, milestones and reminders, assigning tasks, and keeping a shared feed so the team stays informed.</P>
       <P><Strong>Strengths:</Strong> very easy to learn; role-based permissions for sensitive information; congregant profiles and care reports; integrations listed with Planning Center and other church systems.</P>
-      <P><Strong>Limitations:</Strong> reviewers mention there is no dedicated mobile app (web access only). Care needs are entered by your team rather than received from messaging channels.</P>
+      <P><Strong>Limitations:</Strong> it is a care log: prayer requests and counseling conversations happen elsewhere, and your team types a summary afterward. There is no first response or crisis escalation, and reviewers mention there is no dedicated mobile app.</P>
       <P><Strong>Pricing:</Strong> listed from $12 per user per month, with a free trial.</P>
 
-      <H3>4. OurChurchCare: Best for elder and deacon household care</H3>
+      <H3>4. Undershepherd: Best for solo pastors</H3>
+      <P>Undershepherd is pastoral care software built for solo pastors, pastoral teams and care teams. It keeps member details, documents and key dates in one place, logs conversations with congregation members, and assigns follow-up tasks with reminders.</P>
+      <P><Strong>Strengths:</Strong> simple and affordable; reminders for important dates; granular privacy controls; works alongside Planning Center and Breeze; CSV import from spreadsheets.</P>
+      <P><Strong>Limitations:</Strong> like other care logs, it records what your team writes down rather than the conversation itself, and it does not receive prayer requests from social media, email or website chat. A dedicated mobile app has been announced but not yet released.</P>
+      <P><Strong>Pricing:</Strong> from $10/month, with discounts for yearly billing and multiple users; 14-day free trial, no credit card.</P>
+
+      <H3>5. OurChurchCare: Best for elder and deacon household care</H3>
       <P>OurChurchCare is a lightweight, browser-based tool for assigning households to elders, deacons, pastors or volunteers, logging calls and visits, and scheduling the next contact. It is designed to work alongside an existing ChMS.</P>
       <P><Strong>Strengths:</Strong> simple household assignments; recurring contact frequency; overdue indicators and a coverage dashboard; affordable tiers.</P>
-      <P><Strong>Limitations:</Strong> a young service with CSV import rather than live sync; independent reviewers note limited advanced security options such as SSO.</P>
+      <P><Strong>Limitations:</Strong> focused on visiting known households, so it does not help with requests from people outside the church or from online channels. A young service with CSV import rather than live sync; independent reviewers note limited advanced security options such as SSO.</P>
       <P><Strong>Pricing:</Strong> about $9/month (5 users, 100 families) up to $49/month (unlimited), with a 30-day trial.</P>
 
-      <H3>5. Planning Center People: Best free option for Planning Center churches</H3>
+      <H3>6. Planning Center People: Best free option for Planning Center churches</H3>
       <P>Planning Center People is the people database inside Planning Center, and it is free for every church. It is not a dedicated care product, but its notes, forms and workflows can cover basic care follow-up.</P>
       <P><Strong>Strengths:</Strong> free with unlimited people; forms that collect prayer requests and add people to workflows; automations that create follow-up tasks; communication history.</P>
-      <P><Strong>Limitations:</Strong> care is one feature among many, so there is no dedicated care queue, crisis escalation or messaging inbox. Texting from your own number is an add-on.</P>
+      <P><Strong>Limitations:</Strong> care is one feature among many. There is no dedicated prayer and care queue, no messaging inbox for Instagram, Facebook or website chat, and no crisis escalation. Texting from your own number is an add-on.</P>
       <P><Strong>Pricing:</Strong> free; texting from $5/month.</P>
 
       <Divider />
@@ -128,7 +193,7 @@ export default function Page() {
 
       <P><Strong>Most care needs arrive by WhatsApp, Instagram, Facebook or your website?</Strong> Choose a pastoral care CRM built around messaging, like ReachTheSoul, so every message becomes a tracked conversation instead of a lost notification.</P>
       <P><Strong>A large volunteer care team and an established ChMS?</Strong> A dedicated care workflow tool like CareNote fits well, especially if volunteers prefer SMS over logging in.</P>
-      <P><Strong>A small pastoral staff that just needs a shared log?</Strong> Notebird or OurChurchCare are simple and affordable.</P>
+      <P><Strong>A solo pastor or small pastoral staff that just needs a shared log?</Strong> Undershepherd, Notebird or OurChurchCare are simple and affordable.</P>
       <P><Strong>Already on Planning Center with a tight budget?</Strong> Start with Planning Center People workflows, and add a dedicated tool when care volume grows.</P>
       <P><Strong>Reaching people outside the church</Strong> through online media, a prayer line or outreach campaigns? You need fast first responses, follow-up journeys and crisis escalation, which is exactly what a ministry-focused care CRM is for.</P>
 
@@ -151,6 +216,7 @@ export default function Page() {
         <a className="text-blue-600 hover:underline" href="https://www.planningcenter.com/integrations/carenote" rel="nofollow noopener" target="_blank">CareNote on Planning Center</a>,{' '}
         <a className="text-blue-600 hover:underline" href="https://faith.tools/app/carenote" rel="nofollow noopener" target="_blank">CareNote on faith.tools</a>,{' '}
         <a className="text-blue-600 hover:underline" href="https://www.capterra.com/p/10019047/Notebird/" rel="nofollow noopener" target="_blank">Notebird on Capterra</a>,{' '}
+        <a className="text-blue-600 hover:underline" href="https://undershepherd.app" rel="nofollow noopener" target="_blank">Undershepherd</a>,{' '}
         <a className="text-blue-600 hover:underline" href="https://learnofchrist.com/resources/ourchurchcare" rel="nofollow noopener" target="_blank">OurChurchCare review</a>,{' '}
         <a className="text-blue-600 hover:underline" href="https://www.planningcenter.com/people" rel="nofollow noopener" target="_blank">Planning Center People</a>.
       </p>
