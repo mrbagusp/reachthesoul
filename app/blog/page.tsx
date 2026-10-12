@@ -31,8 +31,8 @@ const posts = [
   },
   {
     slug: 'best-crm-for-churches-and-ministries',
-    title: 'The Best CRM for Churches and Ministries in 2026 (What Most Software Gets Wrong)',
-    description: 'HubSpot felt like a sales tool. Spreadsheets fell apart. WhatsApp groups became chaos. Here is what church leaders actually need.',
+    title: 'The Best Church CRM Software in 2026: An Honest Comparison for Churches and Ministries',
+    description: 'ReachTheSoul, Planning Center, Breeze, ChurchTrac, Rock RMS and HubSpot compared: which church CRM fits your members, your care team and your budget.',
   },
   {
     slug: 'how-to-manage-counseling-follow-up-for-ministry',
