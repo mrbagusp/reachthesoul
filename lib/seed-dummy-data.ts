@@ -237,15 +237,16 @@ export async function seedDummyData(
       problemCategories: resp.problemCategories,
       isArchived: false,
       isBlocked: false,
+      isDemo: true,
       ticketCount: tickets.length,
       firstContactDate: Timestamp.fromDate(respCreatedAt),
       createdAt: Timestamp.fromDate(respCreatedAt),
       updatedAt: Timestamp.fromDate(respCreatedAt),
       createdBy: createdByUid,
       progress: {
-        currentStep: tickets.some((t) => t.status === "resolved") ? "Konseling" : "Data",
-        steps: ["Data", "Doa", "Konseling", "Rekomitmen", "Salvation", "POP"],
-        completedSteps: tickets.some((t) => t.status === "resolved") ? ["Data", "Doa"] : ["Data"],
+        currentStep: tickets.some((t) => t.status === "resolved") ? "Counseling" : "Data",
+        steps: ["Data", "Prayer", "Counseling", "Recommitment", "Salvation", "POP"],
+        completedSteps: tickets.some((t) => t.status === "resolved") ? ["Data", "Prayer"] : ["Data"],
         updatedAt: Timestamp.fromDate(respCreatedAt),
       },
     });
@@ -280,6 +281,7 @@ export async function seedDummyData(
         updatedAt: Timestamp.fromDate(ticketCreatedAt),
         resolvedAt: ticket.status === "resolved" ? Timestamp.fromDate(new Date(ticketCreatedAt.getTime() + 3 * 24 * 60 * 60 * 1000)) : null,
         createdBy: createdByUid,
+        isDemo: true,
       });
 
       // Create messages for this ticket

@@ -12,6 +12,7 @@ import type { OrgType, MonthlyVolume, Channel, PainPoint, TeamSize, Urgency, Onb
 import { detectLanguage, tr } from './translations'
 import type { Lang } from './translations'
 import QuizStep from './QuizStep'
+import { openSupportChat } from '@/lib/support'
 import OnboardingResult from './OnboardingResult'
 
 const TOTAL_STEPS = 6
@@ -77,7 +78,8 @@ export default function OnboardingQuiz() {
   const handleExplore = () => setIsOpen(false)
   const handleUpgrade = () => { setIsOpen(false); router.push('/dashboard/billing') }
   const handleContact = () => {
-    window.open('https://wa.me/6285974773341?text=Hi%2C%20saya%20baru%20mendaftar%20di%20ReachTheSoul%20dan%20ingin%20tahu%20lebih%20lanjut', '_blank')
+    setIsOpen(false)
+    openSupportChat()
     setIsOpen(false)
   }
 

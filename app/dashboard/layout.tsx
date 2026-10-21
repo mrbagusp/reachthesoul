@@ -15,6 +15,8 @@ import type { UserRole } from "@/types";
 
 const pageTitles: Record<string, string> = {
   "/dashboard":                    "Overview",
+  "/dashboard/start":              "How to Start",
+  "/dashboard/admin/email":        "Email Inbox",
   "/dashboard/respondents":        "Respondents",
   "/dashboard/tickets":            "Ticket Queue",
   "/dashboard/schedule":           "Schedule",

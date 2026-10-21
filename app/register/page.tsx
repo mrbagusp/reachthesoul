@@ -185,7 +185,7 @@ export default function RegisterPage() {
       }
 
       setDone(true);
-      setTimeout(() => router.push("/dashboard"), 2000);
+      setTimeout(() => router.push("/dashboard/start"), 2000);
 
     } catch (err: any) {
       console.error("Registration failed:", err);

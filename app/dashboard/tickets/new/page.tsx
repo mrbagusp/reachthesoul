@@ -528,7 +528,7 @@ function NewTicketInner() {
                 <div>
                   <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Kategori</label>
                   <Select value={categoryId} onValueChange={setCategoryId}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih kategori..." /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select category..." /></SelectTrigger>
                     <SelectContent>
                       {categories.filter((c: any) => c.isActive).map((c) => (
                         <SelectItem key={c.id || c.categoryId} value={c.id || c.categoryId}>{c.name}</SelectItem>
@@ -570,7 +570,7 @@ function NewTicketInner() {
                     </span>
                   </div>
                 ) : (
-                  <span className="flex-1">Tidak ada agent online. Tiket akan masuk ke antrian.</span>
+                  <span className="flex-1">No agents are online. The ticket will go to the queue.</span>
                 )}
               </div>
 
@@ -664,7 +664,7 @@ function NewTicketInner() {
               <div>
                 <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Received via (Channel)</label>
                 <Select value={leadSourceId} onValueChange={setLeadSourceId}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih channel..." /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select channel..." /></SelectTrigger>
                   <SelectContent>
                     {leadSources.filter((ls: any) => ls.isActive).map((ls) => (
                       <SelectItem key={ls.id || ls.leadSourceId} value={ls.id || ls.leadSourceId}>{ls.name}</SelectItem>
@@ -675,7 +675,7 @@ function NewTicketInner() {
               <div>
                 <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Kategori</label>
                 <Select value={categoryId} onValueChange={setCategoryId}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih kategori..." /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select category..." /></SelectTrigger>
                   <SelectContent>
                     {categories.filter((c: any) => c.isActive).map((c) => (
                       <SelectItem key={c.id || c.categoryId} value={c.id || c.categoryId}>{c.name}</SelectItem>
@@ -707,7 +707,7 @@ function NewTicketInner() {
                     </span>
                 </div>
               ) : (
-                <span className="flex-1">Tidak ada agent online. Tiket akan masuk ke antrian.</span>
+                <span className="flex-1">No agents are online. The ticket will go to the queue.</span>
               )}
             </div>
 
@@ -730,7 +730,7 @@ export default function NewTicketPage() {
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center gap-3 text-muted-foreground">
           <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-          <span className="text-sm">Memuat formulir...</span>
+          <span className="text-sm">Loading form...</span>
         </div>
       </div>
     }>

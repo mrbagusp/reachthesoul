@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { Mail,
   LayoutDashboard, Users, Ticket, MessageSquare,
   BarChart2, Settings, Tag, Globe, CheckCircle2, ListOrdered,
-  ChevronDown, UserCog, LogOut, Plug, CircleUser, X, CalendarDays, Bot, PhoneCall, CreditCard, Shield, Tv2,
+  ChevronDown, UserCog, LogOut, Plug, CircleUser, X, CalendarDays, Bot, PhoneCall, CreditCard, Shield, Tv2, Rocket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@/types";
@@ -26,6 +26,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  { label: "How to Start", href: "/dashboard/start", icon: Rocket, roles: ["supervisor", "admin"] },
   { label: "Overview", href: "/dashboard", icon: LayoutDashboard, roles: ["agent", "supervisor", "admin"] },
   { label: "Respondents", href: "/dashboard/respondents", icon: Users, roles: ["agent", "supervisor", "admin"] },
   { label: "Tickets", href: "/dashboard/tickets", icon: Ticket, roles: ["agent", "supervisor", "admin"] },

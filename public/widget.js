@@ -316,6 +316,8 @@
     schedulePoll();
   }
   btn.onclick = function () { isOpen ? closeBox() : openBox(); };
+  // Let the host page open the chat programmatically (e.g. a "Chat with us" button)
+  window.rtsOpenChat = function () { if (!isOpen) openBox(); };
   closeBtn.onclick = closeBox;
   document.addEventListener("visibilitychange", function () { if (!document.hidden && store(ACTIVE_KEY) === "1") poll(); });
 

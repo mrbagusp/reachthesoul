@@ -43,7 +43,7 @@ export function getRecommendation(data: OnboardingResponse): Recommendation {
     return {
       plan: 'enterprise',
       planLabel: { id: 'Enterprise', en: 'Enterprise' },
-      price: '$249+/mo',
+      price: '$499+/mo',
       reasons: [
         {
           id: 'Dengan tim besar dan kebutuhan kompleks, Anda butuh unlimited users, dedicated account manager, dan SLA guarantee.',
@@ -68,15 +68,15 @@ export function getRecommendation(data: OnboardingResponse): Recommendation {
     return {
       plan: 'growth',
       planLabel: { id: 'Growth', en: 'Growth' },
-      price: '$97/mo',
+      price: '$149/mo',
       reasons: [
         {
-          id: 'AI crisis detection akan langsung alert tim pastoral via WhatsApp ketika ada pesan darurat, bahkan jam 2 pagi.',
-          en: 'AI crisis detection will instantly alert your pastoral team via WhatsApp when there is an urgent message, even at 2 AM.',
+          id: 'AI crisis detection menandai pesan darurat dan memberi alert ke tim pastoral, bahkan jam 2 pagi.',
+          en: 'AI crisis detection flags urgent messages and alerts your pastoral team, even at 2 AM.',
         },
         {
-          id: 'Omnichannel inbox menyatukan WhatsApp, Instagram, dan Facebook dalam satu dashboard.',
-          en: 'Omnichannel inbox unifies WhatsApp, Instagram, and Facebook into one dashboard.',
+          id: 'Satu inbox untuk Instagram, Facebook, email, website chat, dan WhatsApp.',
+          en: 'One inbox for Instagram, Facebook, email, website chat and WhatsApp.',
         },
         {
           id: 'Advanced analytics agar Anda tahu persis berapa yang sudah di-follow up.',
@@ -97,15 +97,15 @@ export function getRecommendation(data: OnboardingResponse): Recommendation {
     return {
       plan: 'starter',
       planLabel: { id: 'Starter', en: 'Starter' },
-      price: '$29/mo',
+      price: '$49/mo',
       reasons: [
         {
-          id: 'AI auto-reply akan merespon setiap pesan dalam 1 menit, 24/7. Tidak ada lagi pesan yang tenggelam.',
-          en: 'AI auto-reply will respond to every message within 1 minute, 24/7. No more buried messages.',
+          id: 'AI auto-reply menyapa setiap pesan masuk kapan pun, termasuk malam hari. Tidak ada lagi pesan yang tenggelam.',
+          en: 'AI auto-reply acknowledges every new message at any hour, including nights. No more buried messages.',
         },
         ...(hasWhatsApp ? [{
-          id: 'WhatsApp integration langsung terhubung. Tim kami bantu setup dalam 12 jam.',
-          en: 'WhatsApp integration connects directly. Our team helps set up within 12 hours.',
+          id: 'WhatsApp tersambung lewat sign-up resmi Meta dalam beberapa klik. Tim kami siap membantu.',
+          en: 'WhatsApp connects through Meta\'s official sign-up in a few clicks. Our team is happy to help.',
         }] : []),
         {
           id: 'Semua percakapan tercatat rapi dengan counseling journal dan ticket system.',

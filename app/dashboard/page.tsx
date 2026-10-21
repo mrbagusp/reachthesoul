@@ -7,8 +7,9 @@ import { TicketStatusBadge, TicketPriorityBadge } from "@/components/tickets/Tic
 import { useTickets } from "@/hooks/use-firestore-tickets";
 import { useRespondents } from "@/hooks/use-firestore-respondents";
 import { useAuthStore } from "@/store/auth-store";
-import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
-import OnboardingQuiz from "@/components/onboarding/OnboardingQuiz";
+import { useSetupProgress } from "@/hooks/use-setup-progress";
+import { useOrgStore } from "@/store/org-store";
+import { Rocket } from "lucide-react";
 import { UpgradeWelcome } from "@/components/onboarding/UpgradeWelcome";
 import { cn } from "@/lib/utils";
 import { WhatsAppBillingNotice } from "@/components/admin/WhatsAppBillingNotice";
@@ -66,13 +67,12 @@ export default function OverviewPage() {
           </Button>
         </div>
       </div>
-<OnboardingQuiz />
       {/* Post-upgrade welcome banner */}
       <UpgradeWelcome />
 
       {/* Onboarding wizard — shows until all steps complete */}
       <WhatsAppBillingNotice />
-      <OnboardingWizard />
+      <SetupBanner />
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -96,59 +96,7 @@ export default function OverviewPage() {
         })}
       </div>
 
-      {/* AI Integration Status Widget */}
-      <Card className="border border-border shadow-none">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
-              <Bot size={14} className="text-blue-600" />
-            </div>
-            <div>
-              <CardTitle className="text-sm font-semibold">AI Integration</CardTitle>
-              <p className="text-[10px] text-muted-foreground">AI First, Human on Demand</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full border bg-muted border-border text-muted-foreground">
-              <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
-              Coming Soon
-            </span>
-            <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground h-7">
-              <Link href="/dashboard/admin/ai-settings">
-                <Settings size={11} className="mr-1" />Configure
-              </Link>
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            {[
-              { label: "Handled by AI Today", value: "—", icon: Bot, color: "text-blue-600", bg: "bg-blue-50" },
-              { label: "Escalated Today", value: "—", icon: ShieldAlert, color: "text-orange-600", bg: "bg-orange-50" },
-              { label: "Avg. AI Response", value: "—", icon: Zap, color: "text-emerald-600", bg: "bg-emerald-50" },
-              { label: "Escalation Rate", value: "—", icon: ShieldAlert, color: "text-amber-600", bg: "bg-amber-50" },
-            ].map((s) => {
-              const Icon = s.icon;
-              return (
-                <div key={s.label} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-background">
-                  <div className={`w-8 h-8 rounded-lg ${s.bg} flex items-center justify-center flex-shrink-0`}>
-                    <Icon size={14} className={s.color} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-foreground">{s.value}</p>
-                    <p className="text-[10px] text-muted-foreground leading-tight">{s.label}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="border-t border-border pt-3">
-            <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide mb-2">AI Integration</p>
-            <p className="text-xs text-muted-foreground">AI auto-reply and escalation triggers will be available after integration setup.</p>
-          </div>
-        </CardContent>
-      </Card>
+      <AIStatusCard />
 
       {/* Recent Tickets */}
       <Card className="border border-border shadow-none">
@@ -198,5 +146,74 @@ export default function OverviewPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+
+// ─── Setup banner: points admins to "How to Start" until setup is done ───
+function SetupBanner() {
+  const setup = useSetupProgress();
+  const role = useAuthStore((s) => s.currentUser?.role);
+  if (role !== "admin" || setup.loading || setup.complete) return null;
+  return (
+    <Card className="border border-primary/30 bg-primary/5 shadow-none">
+      <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Rocket size={16} className="text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              Finish setting up ReachTheSoul ({setup.doneCount} of {setup.total} done)
+            </p>
+            {setup.next && (
+              <p className="text-xs text-muted-foreground mt-0.5">Next step: {setup.next.title}</p>
+            )}
+          </div>
+        </div>
+        <Button asChild size="sm" className="flex-shrink-0">
+          <Link href="/dashboard/start">Continue setup <ArrowRight size={13} className="ml-1" /></Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── AI status: on/off at a glance, with a link to settings ───
+function AIStatusCard() {
+  const activeOrg = useOrgStore((s) => s.activeOrg) as any;
+  const enabled = !!activeOrg?.aiConfig?.enabled;
+  return (
+    <Card className="border border-border shadow-none">
+      <CardContent className="p-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+            <Bot size={16} className="text-blue-600" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">AI first response</p>
+            <p className="text-xs text-muted-foreground">
+              {enabled
+                ? "On. AI acknowledges new messages and escalates urgent ones to your team."
+                : "Off. Turn it on so every message is acknowledged, even at night."}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className={cn(
+            "flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full border",
+            enabled ? "bg-emerald-50 border-emerald-200 text-emerald-700" : "bg-muted border-border text-muted-foreground",
+          )}>
+            <span className={cn("w-1.5 h-1.5 rounded-full", enabled ? "bg-emerald-500" : "bg-muted-foreground")} />
+            {enabled ? "On" : "Off"}
+          </span>
+          <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground h-7">
+            <Link href="/dashboard/admin/ai-settings">
+              <Settings size={11} className="mr-1" />Configure
+            </Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
