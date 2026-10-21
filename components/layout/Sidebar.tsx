@@ -121,7 +121,7 @@ export function Sidebar({ role, userName, onLogout, mobileOpen, onMobileClose }:
       <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5 overflow-y-auto">
         {visibleItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive = item.href === "/dashboard" ? pathname === "/dashboard" : (pathname === item.href || pathname.startsWith(item.href + "/"));
           const hasChildren = item.children && item.children.length > 0;
 
           if (hasChildren) {
