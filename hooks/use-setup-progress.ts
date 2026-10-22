@@ -101,7 +101,7 @@ export function useSetupProgress() {
         href: "/dashboard/admin/social-accounts",
         cta: "Connect",
         time: "10 min",
-        done: hasChannel("whatsapp") || !!org.channelConfig?.whatsapp_access_token || !!org.integrations?.whatsapp_access_token,
+        done: hasChannel("whatsapp") || !!org.channelConfigStatus?.meta_access_token || !!org.channelConfigStatus?.fonnte_token || !!org.channelConfig?.whatsapp_access_token,
         lockedUntil: cfg.features.whatsapp ? undefined : "Starter",
         optional: true,
       },

@@ -1,7 +1,13 @@
 import type { EscalationReason, EscalationTrigger, AIConfig, Message } from "@/types";
 
-// ─── Internal route handler (keeps credentials server-side) ─────────────────
-const AI_ENDPOINT = "/api/ai/chat";
+import { aiTestCall } from "@/lib/ai-client";
+import { keywordHit } from "@/lib/escalation";
+import { useOrgStore } from "@/store/org-store";
+
+// AI calls go through the aiTest Cloud Function (keys stay on the server).
+function activeOrgId(): string {
+  return useOrgStore.getState().activeOrg?.orgId ?? "";
+}
 
 // ─── Escalation trigger detection ───────────────────────────────────────────
 export function detectEscalation(
@@ -12,7 +18,7 @@ export function detectEscalation(
 
   for (const trigger of config.escalationTriggers) {
     if (!trigger.enabled) continue;
-    const matched = trigger.keywords.filter((kw) => lower.includes(kw.toLowerCase()));
+    const matched = trigger.keywords.filter((kw) => keywordHit(lower, kw));
     if (matched.length > 0) {
       const confidence = Math.min(0.6 + matched.length * 0.15, 0.99);
       return {
@@ -76,21 +82,7 @@ export async function detectEscalationWithAI(
   const userPrompt = `Conversation context:\n${recentMessages}\n\nLatest message from respondent:\n"${incomingMessage}"`;
 
   try {
-    const response = await fetch("/api/ai/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: CRISIS_DETECTION_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-      }),
-    });
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    const raw = data.choices?.[0]?.message?.content ?? "";
+    const raw = await aiTestCall(activeOrgId(), [{ role: "user", content: userPrompt }], { mode: "crisis" });
     const parsed = JSON.parse(raw);
 
     if (parsed.needsEscalation && parsed.confidence >= 0.7) {
@@ -149,18 +141,10 @@ export async function generateAIReply(
   // Add the new incoming message
   history.push({ role: "user", content: incomingMessage });
 
-  const response = await fetch(AI_ENDPOINT, {
-    method:  "POST",
-    headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ messages: history }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`AI API error: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  const reply = data.choices?.[0]?.message?.content ?? "";
+  const turns = history
+    .filter((h) => h.role !== "system")
+    .map((h) => ({ role: h.role as "user" | "assistant", content: h.content }));
+  const reply = await aiTestCall(activeOrgId(), turns, systemPrompt.trim() ? { systemPrompt } : {});
 
   return { reply, escalation };
 }

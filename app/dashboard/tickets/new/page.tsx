@@ -432,7 +432,7 @@ function NewTicketInner() {
                       <div className={cn("flex-shrink-0", channelConfig.color)}>{channelConfig.icon}</div>
                       <div className="flex-1">
                         <p className={cn("text-xs font-semibold", channelConfig.color)}>
-                          Hubungi {respondent.fullName} via {channelConfig.label}
+                          Contact {respondent.fullName} via {channelConfig.label}
                         </p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
                           {outboundChannel === "call"         && respondent.phone && `Dial ${respondent.phone}`}

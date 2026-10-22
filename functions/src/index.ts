@@ -19,6 +19,13 @@ import { verifyMetaSignature } from "./verify-signature";
 import { parseWhatsappMessage, parseMessengerMessage } from "./meta-media";
 import { recordWhatsappSend } from "./wa-usage";
 import { sendTicketEmailReply } from "./email-channel";
+import {
+  resolveAiCreds, claimAiReply, refundAiSession, maybeSendQuotaAlert, callModel,
+  monthKey, SAFETY_SUFFIX, CRISIS_PROMPT, MAX_AI_REPLIES_PER_SESSION,
+} from "./ai-platform";
+import { sendEmail, wrapInEmailTemplate } from "./emailService";
+import { loadChannelConfig } from "./channel-secrets";
+import { matchTriggers, parseCrisisJson, alertsWithoutAi, CRISIS_THRESHOLD } from "./escalation";
 import * as admin from "firebase-admin";
 
 // Re-export scheduled function so Firebase deploys it
@@ -41,6 +48,8 @@ export { checkSocialAccountTokenHealth } from "./token-health-check";
 export { syncWhatsappPricingScheduled, syncWhatsappPricingNow } from "./wa-pricing-sync";
 // Email channel: inbound (Resend webhook), setup callables
 export { webhookEmailInbound, listEmailInboxes, createEmailInbox, updateEmailInbox, sendEmailForwardingTest } from "./email-channel";
+export { getAiStatus, saveAiKey, removeAiKey, migrateAiKey, aiTest } from "./ai-platform";
+export { getChannelSettings, saveChannelSettings } from "./channel-secrets";
 
 // Set region to asia-southeast1 (Singapore) — closest to Indonesia
 setGlobalOptions({ region: "asia-southeast1" });
@@ -61,9 +70,8 @@ function getDb() {
 // ────────────────────────────────────────────────────────────────────────────
 async function getChannelConfig(orgId: string): Promise<Record<string, any>> {
   try {
-    const doc = await getDb().collection("organizations").doc(orgId).get();
-    if (!doc.exists) return {};
-    return doc.data()?.channelConfig ?? {};
+    // Non-secret settings from the org doc + tokens from org_secrets (server-only)
+    return await loadChannelConfig(orgId);
   } catch (err) {
     logger.error("[getChannelConfig] Failed:", err);
     return {};
@@ -928,118 +936,101 @@ export const onRespondentMessage = onDocumentCreated(
         return;
       }
 
-      // ── Escalation triggers ──
+      // ── Escalation triggers (rules in escalation.ts) ──
+      // Prayer / salvation / baptism words only TAG the ticket; the AI keeps replying.
+      // Crisis / counseling words get a semantic AI check; only a confirmed crisis alerts.
       const messageContent = (message.content ?? "").toLowerCase();
-      const triggers = aiConfig.escalationTriggers ?? [];
+      const matches = matchTriggers(messageContent, aiConfig.escalationTriggers ?? []);
+      const checkMatches = matches.filter((m) => m.mode === "check");
+      const tagMatches = matches.filter((m) => m.mode === "tag");
+      const handoffMatch = matches.find((m) => m.mode === "handoff") ?? null;
+
       let detectedTrigger: string | null = null;
       let escalationMethod: "keyword" | "ai_contextual" = "keyword";
       let aiAnalysis: string | null = null;
 
-      for (const trigger of triggers) {
-        if (!trigger.enabled) continue;
-        for (const kw of (trigger.keywords ?? []) as string[]) {
-          if (messageContent.includes(kw.toLowerCase())) {
-            detectedTrigger = trigger.reason;
-            break;
-          }
-        }
-        if (detectedTrigger) break;
-      }
+      // Built-in RTS AI (plan quota) or the church's own key (BYOK) — see ai-platform.ts
+      const creds = await resolveAiCreds(orgId, orgDoc.data());
+      const systemPrompt = (aiConfig.systemPrompt || "You are a compassionate Christian care assistant.") + SAFETY_SUFFIX;
 
-      const provider = aiConfig.provider ?? "openai";
-      const apiKey = aiConfig.apiKey ?? "";
-      const model = aiConfig.model ?? "gpt-4o-mini";
-      const systemPrompt = aiConfig.systemPrompt ?? "You are a helpful assistant.";
-
-      // AI contextual crisis detection (if enabled and no keyword match)
-      if (!detectedTrigger && aiConfig.aiContextualDetection && apiKey) {
+      // Semantic crisis check: whenever crisis/counseling words appear, or on every message
+      // when "AI contextual detection" is on. Not counted as a session; runs even over quota.
+      let semanticRan = false;
+      let semanticNote = "";
+      if ((checkMatches.length > 0 || aiConfig.aiContextualDetection) && creds) {
         try {
-          logger.info(`[onRespondentMessage] Running AI contextual crisis detection for ticket ${ticketId}`);
-
           const contextSnap = await db.collection(`tickets/${ticketId}/messages`)
             .orderBy("createdAt", "desc").limit(6).get();
           const contextMessages = contextSnap.docs
             .reverse()
             .filter((d) => !d.data().isInternal)
-            .map((d) => {
-              const m = d.data();
-              return `[${m.senderRole}]: ${m.content ?? ""}`;
-            })
+            .map((d) => `[${d.data().senderRole}]: ${d.data().content ?? ""}`)
             .join("\n");
-
-          const crisisPrompt = `You are a crisis detection system for a Christian ministry counseling platform.
-Analyze the respondent's latest message AND the conversation context to determine if this person needs IMMEDIATE human intervention.
-
-Detect these situations even when NO explicit keywords are used:
-- Suicidal ideation or self-harm intent (direct or indirect)
-- Severe emotional crisis (hopelessness, despair, giving up)
-- Domestic violence or abuse indicators
-- Substance abuse emergency
-- Immediate danger to self or others
-- Grief crisis (sudden loss, death of loved one)
-- Psychotic symptoms or severe mental health episode
-
-Be sensitive to both Indonesian (Bahasa) and English expressions. Indonesian speakers may use indirect language like:
-- "sudah tidak kuat lagi" (can't take it anymore)
-- "lebih baik saya pergi" (better if I leave/go)
-- "tidak ada gunanya" (there's no point)
-- "semua akan lebih baik tanpa saya" (everything would be better without me)
-- "saya sudah menyerah" (I've given up)
-- "capek hidup" (tired of living)
-- "mau tidur selamanya" (want to sleep forever)
-- "tidak ada yang peduli" (nobody cares)
-
-Respond with ONLY valid JSON (no markdown, no backticks):
-{"needsEscalation":true/false,"reason":"grief_or_crisis"|"counseling"|null,"confidence":0.0-1.0,"label":"short description","analysis":"brief explanation (1-2 sentences)"}
-
-If the message is casual, informational, or does not indicate crisis, return:
-{"needsEscalation":false,"reason":null,"confidence":0,"label":null,"analysis":null}`;
-
           const userPrompt = `Conversation context:\n${contextMessages}\n\nLatest message from respondent:\n"${message.content ?? ""}"`;
-
-          let aiDetectionResult = "";
-
-          if (provider === "openai") {
-            const resp = await fetch("https://api.openai.com/v1/chat/completions", {
-              method: "POST",
-              headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-              body: JSON.stringify({
-                model,
-                messages: [{ role: "system", content: crisisPrompt }, { role: "user", content: userPrompt }],
-                max_tokens: 200, temperature: 0.1,
-              }),
-            });
-            const result: any = await resp.json();
-            aiDetectionResult = result.choices?.[0]?.message?.content ?? "";
-          } else if (provider === "anthropic") {
-            const resp = await fetch("https://api.anthropic.com/v1/messages", {
-              method: "POST",
-              headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-              body: JSON.stringify({
-                model, max_tokens: 200, temperature: 0.1,
-                system: crisisPrompt,
-                messages: [{ role: "user", content: userPrompt }],
-              }),
-            });
-            const result: any = await resp.json();
-            aiDetectionResult = result.content?.[0]?.text ?? "";
-          }
-
-          if (aiDetectionResult) {
-            const cleaned = aiDetectionResult.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-            const parsed = JSON.parse(cleaned);
-            if (parsed.needsEscalation && parsed.confidence >= 0.7) {
-              detectedTrigger = parsed.reason ?? "grief_or_crisis";
+          const raw = await callModel(creds, CRISIS_PROMPT, [{ role: "user", content: userPrompt }], { maxTokens: 200, temperature: 0.1 });
+          const parsed = parseCrisisJson(raw);
+          if (parsed) {
+            semanticRan = true;
+            if (parsed.needsEscalation && parsed.confidence >= CRISIS_THRESHOLD) {
+              detectedTrigger = parsed.reason || checkMatches[0]?.reason || "grief_or_crisis";
               escalationMethod = "ai_contextual";
-              aiAnalysis = parsed.analysis ?? "AI detected crisis signals in conversation context";
-              logger.info(`[onRespondentMessage] AI contextual detection triggered: ${detectedTrigger} (confidence: ${parsed.confidence}) — ${aiAnalysis}`);
+              aiAnalysis = parsed.analysis ?? "AI detected crisis signals in the conversation";
+              logger.info(`[onRespondentMessage] Crisis confirmed by AI: ${detectedTrigger} (${parsed.confidence})`);
             } else {
-              logger.info(`[onRespondentMessage] AI contextual detection: no crisis detected (confidence: ${parsed.confidence ?? 0})`);
+              semanticNote = parsed.analysis ? ` AI check: no immediate crisis (${parsed.analysis}).` : " AI check: no immediate crisis.";
+              logger.info(`[onRespondentMessage] AI check: no crisis (${parsed.confidence})`);
             }
           }
         } catch (aiDetectErr) {
-          logger.error("[onRespondentMessage] AI contextual detection error:", aiDetectErr);
+          logger.error("[onRespondentMessage] AI crisis check error:", aiDetectErr);
         }
+      }
+      // Safety fallback: no AI available (or it failed) → grief/crisis words still alert
+      if (!detectedTrigger && !semanticRan) {
+        const fb = checkMatches.find((m) => alertsWithoutAi(m.reason));
+        if (fb) { detectedTrigger = fb.reason; escalationMethod = "keyword"; }
+      }
+
+      // Matched words that were not a confirmed crisis → tag the ticket for follow-up (once per tag)
+      if (!detectedTrigger) {
+        const already: string[] = Array.isArray(ticket.aiTags) ? ticket.aiTags : [];
+        const fresh = [...tagMatches, ...checkMatches].filter((m, i, arr) =>
+          !already.includes(m.reason) && arr.findIndex((x) => x.reason === m.reason) === i);
+        if (fresh.length) {
+          try {
+            await db.doc(`tickets/${ticketId}`).update({
+              aiTags: admin.firestore.FieldValue.arrayUnion(...fresh.map((m) => m.reason)),
+              needsFollowUp: true,
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            await db.collection(`tickets/${ticketId}/messages`).add({
+              senderId: "system", senderName: "System", senderRole: "system", isInternal: true,
+              content: `🏷️ Tagged for follow-up: ${fresh.map((m) => `${m.label} ("${m.keywords[0]}")`).join(", ")}. The AI keeps replying; no urgent alert was sent.${checkMatches.length ? semanticNote : ""}`,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          } catch (tagErr) { logger.error("[onRespondentMessage] Tagging failed:", tagErr); }
+        }
+      }
+
+      // "Talk to a human" (and custom triggers): a person takes over, no emergency alert
+      if (!detectedTrigger && handoffMatch) {
+        await db.doc(`tickets/${ticketId}`).update({
+          handledBy: "escalated",
+          escalation: { reason: handoffMatch.reason, method: "keyword" },
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await db.collection(`tickets/${ticketId}/messages`).add({
+          senderId: "system", senderName: "System", senderRole: "system", isInternal: true,
+          content: `👤 Handed to the care team (${handoffMatch.label}: "${handoffMatch.keywords[0]}").`,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await db.collection(`tickets/${ticketId}/messages`).add({
+          senderId: "ai_assistant", senderName: "AI Assistant", senderRole: "ai", isInternal: false, aiGenerated: true,
+          content: aiConfig.escalationReplyMessage
+            ?? "Thank you for reaching out. I'm connecting you with a team member who can assist you personally. They'll be with you shortly! 🙏",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return;
       }
 
       if (detectedTrigger) {
@@ -1085,7 +1076,7 @@ If the message is casual, informational, or does not indicate crisis, return:
         try {
           const orgData = orgDoc.data();
           const emergencyContacts = orgData?.emergencyContacts ?? [];
-          const channelConfig = orgData?.channelConfig ?? {};
+          const channelConfig = await loadChannelConfig(orgId, orgData);
           const fonnteToken = channelConfig.fonnte_token ?? "";
 
           const respondentDoc = await db.doc(`respondents/${ticket.respondentId}`).get();
@@ -1108,13 +1099,57 @@ If the message is casual, informational, or does not indicate crisis, return:
               } catch (sendErr) { logger.error(`[onRespondentMessage] Alert failed:`, sendErr); }
             }
           }
+          // Email alert (works everywhere, not only where Fonnte WhatsApp is set up)
+          const emailContacts = (emergencyContacts as any[]).filter((c) => /\S+@\S+\.\S+/.test(String(c?.email ?? "")));
+          if (emailContacts.length > 0) {
+            const methodLabel = escalationMethod === "ai_contextual" ? "AI contextual detection" : "Keyword match";
+            const subject = `Urgent: ${respondentName} may need help now (${ticketNumber})`;
+            const body = `An incoming message was flagged for urgent pastoral follow-up.\n\nPerson: ${respondentName}\nTicket: ${ticketNumber}\nReason: ${detectedTrigger}\nDetection: ${methodLabel}${aiAnalysis ? `\nAI analysis: ${aiAnalysis}` : ""}\n\nMessage:\n"${String(message.content ?? "").substring(0, 500)}"\n\nOpen the conversation: https://reachthesoul.org/dashboard/tickets/${ticketId}\n\nIf someone may be in immediate danger, contact local emergency services.`;
+            for (const contact of emailContacts) {
+              try {
+                await sendEmail({ to: String(contact.email).trim(), subject, html: wrapInEmailTemplate(body, subject, { lang: "en" }) });
+                logger.info(`[onRespondentMessage] Emergency email sent to ${contact.name}`);
+              } catch (sendErr) { logger.error(`[onRespondentMessage] Email alert failed:`, sendErr); }
+            }
+          }
         } catch (alertErr) { logger.error("[onRespondentMessage] Emergency alert error:", alertErr); }
 
         return;
       }
 
       // ── Call AI API ──
-      if (!apiKey) { logger.warn("[onRespondentMessage] No API key configured"); return; }
+      if (!creds) { logger.info("[onRespondentMessage] AI not available for this org (plan/key)"); return; }
+
+      // Reserve a reply in this ticket's AI session (opens & counts a new session when needed)
+      const claim = await claimAiReply(orgId, ticketId, channel, creds);
+      if (!claim.ok) {
+        if (claim.reason === "quota") {
+          if (ticket.aiQuotaNoted !== monthKey()) {
+            await db.collection(`tickets/${ticketId}/messages`).add({
+              senderId: "system", senderName: "System", senderRole: "system", isInternal: true,
+              content: `AI paused: this month's ${claim.limit} AI sessions are used up. Please reply manually. Upgrade in Billing to keep the AI answering.`,
+              createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            await db.doc(`tickets/${ticketId}`).update({ aiQuotaNoted: monthKey() });
+          }
+          await maybeSendQuotaAlert(orgId, claim.used, claim.limit);
+          logger.info(`[onRespondentMessage] AI quota reached for ${orgId} (${claim.used}/${claim.limit})`);
+          return;
+        }
+        // reply_cap: hand over to a person, once
+        await db.collection(`tickets/${ticketId}/messages`).add({
+          senderId: "ai_assistant", senderName: "AI Assistant", senderRole: "ai", aiGenerated: true, isInternal: false,
+          content: "Thank you for sharing all of this with us. A member of our care team will continue this conversation with you personally. 🙏",
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await db.collection(`tickets/${ticketId}/messages`).add({
+          senderId: "system", senderName: "System", senderRole: "system", isInternal: true,
+          content: `AI handed this conversation to the team after ${MAX_AI_REPLIES_PER_SESSION} replies in one session. Please continue personally.`,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        await db.doc(`tickets/${ticketId}`).update({ handledBy: "human", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+        return;
+      }
 
       const messagesSnap = await db.collection(`tickets/${ticketId}/messages`)
         .orderBy("createdAt", "desc").limit(10).get();
@@ -1125,27 +1160,21 @@ If the message is casual, informational, or does not indicate crisis, return:
           return { role: m.senderRole === "respondent" ? "user" as const : "assistant" as const, content: m.content ?? "" };
         });
 
-      let aiReply = "";
+      const isWhatsApp = channel.startsWith("whatsapp");
+      const channelHint = isWhatsApp
+        ? "\n\nThis conversation is on WhatsApp, where each message is billed: answer in ONE short message (under about 600 characters)."
+        : "";
 
-      if (provider === "openai") {
-        const response = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ model, messages: [{ role: "system", content: systemPrompt }, ...history], max_tokens: 500, temperature: 0.7 }),
-        });
-        const result: any = await response.json();
-        if (result.error) { logger.error("[onRespondentMessage] OpenAI error:", result.error); return; }
-        aiReply = result.choices?.[0]?.message?.content ?? "";
-      } else if (provider === "anthropic") {
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
-          body: JSON.stringify({ model, max_tokens: 500, system: systemPrompt, messages: history }),
-        });
-        const result: any = await response.json();
-        if (result.error) { logger.error("[onRespondentMessage] Anthropic error:", result.error); return; }
-        aiReply = result.content?.[0]?.text ?? "";
+      let aiReply = "";
+      try {
+        aiReply = await callModel(creds, systemPrompt + channelHint, history, { maxTokens: isWhatsApp ? 300 : 500 });
+      } catch (aiErr) {
+        logger.error("[onRespondentMessage] AI call failed:", aiErr);
+        if (claim.newSession) await refundAiSession(orgId, ticketId);
+        return;
       }
+      if (!aiReply.trim() && claim.newSession) await refundAiSession(orgId, ticketId);
+      if (claim.newSession && !creds.byok) await maybeSendQuotaAlert(orgId, claim.used, claim.limit);
 
       if (!aiReply.trim()) { logger.warn("[onRespondentMessage] AI returned empty reply"); return; }
 
@@ -1170,7 +1199,7 @@ If the message is casual, informational, or does not indicate crisis, return:
       try {
         const respondentMessagesCount = history.filter((m) => m.role === "user").length;
         if (respondentMessagesCount >= 2 && respondentMessagesCount % 2 === 0) {
-          await extractRespondentData(ticketId, ticket.respondentId, history, apiKey, model);
+          if (creds.provider === "openai") await extractRespondentData(ticketId, ticket.respondentId, history, creds.apiKey, creds.model);
         }
       } catch (extractErr) {
         logger.error("[onRespondentMessage] Data extraction failed:", extractErr);

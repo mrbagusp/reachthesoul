@@ -15,6 +15,10 @@ import { useOrgStore } from "@/store/org-store";
 import { FeatureGate, SetupRequestGate } from "@/components/feature-gate/FeatureGate";
 import { cn } from "@/lib/utils";
 import type { EscalationReason } from "@/types";
+import Link from "next/link";
+import { callFn, aiTestCall, errMsg, type AiStatus } from "@/lib/ai-client";
+import { buildPrompt, EMPTY_PROFILE, type PromptProfile } from "@/lib/ai-prompt";
+import { matchTriggers, parseCrisisJson, alertsWithoutAi, triggerMode, CRISIS_THRESHOLD } from "@/lib/escalation";
 
 // ── Types ──
 interface AISettings {
@@ -33,6 +37,8 @@ interface AISettings {
   escalationReplyMessage: string;
   channelToggles: Record<string, boolean>;
   aiContextualDetection: boolean;
+  promptProfile?: PromptProfile;
+  promptMode?: "guided" | "custom";
 }
 
 const DEFAULT_SYSTEM_PROMPT = `You are a compassionate Christian ministry counselor for ReachTheSoul ministry platform.
@@ -101,7 +107,7 @@ function AISettingsContent() {
   const activeOrg = useOrgStore((s) => s.activeOrg);
   const orgId = activeOrg?.orgId ?? "";
   const [settings, setSettings] = useState<AISettings>(DEFAULT_SETTINGS);
-  const [emergencyContacts, setEmergencyContacts] = useState<{name: string; phone: string; role: string}[]>([]);
+  const [emergencyContacts, setEmergencyContacts] = useState<{name: string; phone: string; role: string; email?: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -109,13 +115,38 @@ function AISettingsContent() {
   const [expandedTrigger, setExpandedTrigger] = useState<string | null>("prayer_request");
   const [newKeyword, setNewKeyword] = useState<Record<string, string>>({});
 
+  // AI engine (built-in RTS AI vs church's own key) — loaded from the server, never includes a key
+  const [aiStatus, setAiStatus] = useState<AiStatus | null>(null);
+  const [engineError, setEngineError] = useState<string | null>(null);
+  const [byokOpen, setByokOpen] = useState(false);
+  const [byokProvider, setByokProvider] = useState<"openai" | "anthropic">("openai");
+  const [byokModel, setByokModel] = useState("gpt-4o-mini");
+  const [byokKey, setByokKey] = useState("");
+  const [byokSaving, setByokSaving] = useState(false);
+
+  // AI Response Prompt
+  const [profile, setProfile] = useState<PromptProfile>(EMPTY_PROFILE);
+  const [promptMode, setPromptMode] = useState<"guided" | "custom">("guided");
+  const setP = (k: keyof PromptProfile, v: string) => setProfile((p) => ({ ...p, [k]: v }));
+  const composedPrompt = promptMode === "guided" ? buildPrompt(profile) : settings.systemPrompt;
+
+  const refreshAiStatus = async () => {
+    if (!orgId) return;
+    try {
+      setAiStatus(await callFn<AiStatus>("getAiStatus", { orgId }));
+      setEngineError(null);
+    } catch (e) {
+      setEngineError(errMsg(e));
+    }
+  };
+
   // Test panel
   const [testInput, setTestInput] = useState("");
   const [testResult, setTestResult] = useState<string | null>(null);
   const [testLoading, setTestLoading] = useState(false);
   const [testError, setTestError] = useState<string | null>(null);
   const [testEscalation, setTestEscalation] = useState<{
-    method: "keyword" | "ai_contextual" | null;
+    method: "keyword" | "ai_contextual" | "handoff" | "tag" | null;
     trigger: string | null;
     analysis: string | null;
     confidence: number | null;
@@ -134,6 +165,14 @@ function AISettingsContent() {
         if (snap.exists()) {
           const data = snap.data()?.aiConfig;
           if (data) {
+            const hasProfile = !!data.promptProfile;
+            setProfile({ ...EMPTY_PROFILE, churchName: activeOrg?.name ?? "", ...(data.promptProfile ?? {}) });
+            // Existing churches with a hand-written prompt start in "Full prompt" mode so nothing is lost
+            setPromptMode(data.promptMode ?? (hasProfile ? "guided" : (data.systemPrompt && data.systemPrompt !== DEFAULT_SYSTEM_PROMPT ? "custom" : "guided")));
+            if (data.apiKey) {
+              // Move a legacy key off the org document (readable by the whole team) into server-only storage
+              try { await callFn("migrateAiKey", { orgId }); } catch { /* admins only; ignore */ }
+            }
             setSettings({
               ...DEFAULT_SETTINGS,
               ...data,
@@ -144,6 +183,9 @@ function AISettingsContent() {
               },
             });
           }
+          else {
+            setProfile({ ...EMPTY_PROFILE, churchName: activeOrg?.name ?? "" });
+          }
           // Load emergency contacts
           const ec = snap.data()?.emergencyContacts;
           if (ec && Array.isArray(ec)) {
@@ -153,9 +195,11 @@ function AISettingsContent() {
       } catch (err) {
         console.error("Failed to load AI settings:", err);
       }
+      await refreshAiStatus();
       setLoading(false);
     }
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
   // Save settings to organization document
@@ -167,15 +211,24 @@ function AISettingsContent() {
         import("firebase/firestore"),
         import("@/lib/firebase"),
       ]);
+      const finalPrompt = promptMode === "guided" ? buildPrompt(profile) : settings.systemPrompt;
+      // Dotted fields: keeps server-managed values (engine, key hint) intact; the API key is never written here
       await updateDoc(doc(db, "organizations", orgId), {
-        aiConfig: {
-          ...settings,
-          updatedAt: new Date().toISOString(),
-          updatedBy: currentUser?.uid ?? "unknown",
-        },
-        emergencyContacts: emergencyContacts.filter((c) => c.phone.trim()),
+        "aiConfig.enabled": settings.enabled,
+        "aiConfig.autoReply": settings.autoReply,
+        "aiConfig.systemPrompt": finalPrompt,
+        "aiConfig.promptProfile": profile,
+        "aiConfig.promptMode": promptMode,
+        "aiConfig.escalationTriggers": settings.escalationTriggers,
+        "aiConfig.escalationReplyMessage": settings.escalationReplyMessage,
+        "aiConfig.channelToggles": settings.channelToggles,
+        "aiConfig.aiContextualDetection": settings.aiContextualDetection,
+        "aiConfig.updatedAt": new Date().toISOString(),
+        "aiConfig.updatedBy": currentUser?.uid ?? "unknown",
+        emergencyContacts: emergencyContacts.filter((c) => c.phone.trim() || (c.email ?? "").trim()),
         updatedAt: serverTimestamp(),
       });
+      setSettings((s) => ({ ...s, systemPrompt: finalPrompt }));
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
@@ -192,100 +245,49 @@ function AISettingsContent() {
     setTestError(null);
     setTestEscalation(null);
     try {
-      // Step 1: Check keyword-based escalation
-      const lower = testInput.toLowerCase();
-      let keywordTrigger: string | null = null;
-      for (const trigger of settings.escalationTriggers) {
-        if (!trigger.enabled) continue;
-        for (const kw of trigger.keywords) {
-          if (lower.includes(kw.toLowerCase())) {
-            keywordTrigger = trigger.label;
-            break;
-          }
-        }
-        if (keywordTrigger) break;
-      }
+      // Same rules as the server (lib/escalation.ts): prayer/salvation/baptism only tag,
+      // crisis/counseling words get a semantic AI check, "talk to a human" hands over.
+      const matches = matchTriggers(testInput, settings.escalationTriggers);
+      const check = matches.filter((m) => m.mode === "check");
+      const handoff = matches.find((m) => m.mode === "handoff");
+      const tags = matches.filter((m) => m.mode === "tag");
+      let crisisFound = false;
+      let semanticRan = false;
 
-      if (keywordTrigger) {
-        setTestEscalation({ method: "keyword", trigger: keywordTrigger, analysis: null, confidence: null });
-      }
-
-      // Step 2: If no keyword match and AI contextual detection is on, check with AI
-      if (!keywordTrigger && settings.aiContextualDetection && settings.apiKey) {
-        const crisisPrompt = `You are a crisis detection system for a Christian ministry counseling platform.
-Analyze the respondent's message to determine if this person needs IMMEDIATE human intervention.
-
-Detect these situations even when NO explicit keywords are used:
-- Suicidal ideation or self-harm intent (direct or indirect)
-- Severe emotional crisis (hopelessness, despair, giving up)
-- Domestic violence or abuse indicators
-- Immediate danger to self or others
-- Grief crisis (sudden loss, death of loved one)
-
-Be sensitive to both Indonesian (Bahasa) and English indirect expressions like:
-- "sudah tidak kuat lagi", "lebih baik saya pergi", "tidak ada gunanya"
-- "semua akan lebih baik tanpa saya", "capek hidup", "mau tidur selamanya"
-
-Respond with ONLY valid JSON (no markdown):
-{"needsEscalation":true/false,"reason":"grief_or_crisis"|"counseling"|null,"confidence":0.0-1.0,"label":"short description","analysis":"brief explanation"}`;
-
-        const crisisResp = await fetch("/api/ai/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orgId,
-            apiKey: settings.apiKey,
-            provider: settings.provider,
-            model: settings.model,
-            messages: [
-              { role: "system", content: crisisPrompt },
-              { role: "user", content: `Latest message from respondent:\n"${testInput}"` },
-            ],
-          }),
-        });
-        if (crisisResp.ok) {
-          const crisisData = await crisisResp.json();
-          const raw = crisisData.choices?.[0]?.message?.content ?? "";
-          try {
-            const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-            const parsed = JSON.parse(cleaned);
-            if (parsed.needsEscalation && parsed.confidence >= 0.7) {
-              setTestEscalation({
-                method: "ai_contextual",
-                trigger: parsed.label ?? "AI-detected crisis",
-                analysis: parsed.analysis ?? null,
-                confidence: parsed.confidence,
-              });
-            } else {
-              setTestEscalation({ method: null, trigger: null, analysis: null, confidence: parsed.confidence ?? 0 });
+      if (check.length || settings.aiContextualDetection) {
+        try {
+          const raw = await aiTestCall(orgId, [{ role: "user", content: `Latest message from respondent:\n"${testInput}"` }], { mode: "crisis" });
+          const parsed = parseCrisisJson(raw);
+          if (parsed) {
+            semanticRan = true;
+            if (parsed.needsEscalation && parsed.confidence >= CRISIS_THRESHOLD) {
+              crisisFound = true;
+              setTestEscalation({ method: "ai_contextual", trigger: parsed.label ?? "AI-confirmed crisis", analysis: parsed.analysis ?? null, confidence: parsed.confidence });
             }
-          } catch { /* JSON parse failed, ignore */ }
-        }
+          }
+        } catch { /* ignore detection errors in the test panel */ }
+      }
+      if (!crisisFound && !semanticRan && check.some((m) => alertsWithoutAi(m.reason))) {
+        crisisFound = true;
+        setTestEscalation({ method: "keyword", trigger: check[0].label, analysis: "AI check unavailable, so crisis words alert on their own (safety fallback).", confidence: null });
+      }
+      if (!crisisFound && handoff) {
+        setTestEscalation({ method: "handoff", trigger: handoff.label, analysis: "Handed to a person. No urgent alert.", confidence: null });
+      } else if (!crisisFound && (tags.length || check.length)) {
+        setTestEscalation({ method: "tag", trigger: [...tags, ...check].map((m) => m.label).join(", "), analysis: "Tagged for follow-up. The AI keeps replying and no urgent alert is sent.", confidence: null });
+      }
+      // Crisis and hand-over get the escalation reply instead of an AI answer (same as live)
+      if (crisisFound || handoff) {
+        setTestResult(settings.escalationReplyMessage || DEFAULT_SETTINGS.escalationReplyMessage);
+        setTestLoading(false);
+        return;
       }
 
-      // Step 3: Get AI reply
-      const response = await fetch("/api/ai/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orgId,
-          apiKey: settings.apiKey,
-          provider: settings.provider,
-          model: settings.model,
-          messages: [
-            { role: "system", content: settings.systemPrompt },
-            { role: "user", content: testInput },
-          ],
-        }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error ?? `HTTP ${response.status}`);
-      }
-      const data = await response.json();
-      setTestResult(data.choices?.[0]?.message?.content ?? "No response");
+      // Step 3: Get AI reply using the prompt currently on screen (even if not saved yet)
+      const reply = await aiTestCall(orgId, [{ role: "user", content: testInput }], { systemPrompt: composedPrompt });
+      setTestResult(reply || "No response");
     } catch (err: any) {
-      setTestError(err.message ?? "Test failed");
+      setTestError(errMsg(err));
     }
     setTestLoading(false);
   };
@@ -328,8 +330,31 @@ Respond with ONLY valid JSON (no markdown):
     }));
   };
 
-  const models = settings.provider === "openai" ? OPENAI_MODELS : settings.provider === "anthropic" ? ANTHROPIC_MODELS : [];
-  const maskedKey = settings.apiKey ? settings.apiKey.slice(0, 8) + "••••••••" + settings.apiKey.slice(-4) : "";
+  const byokModels = byokProvider === "openai" ? OPENAI_MODELS : ANTHROPIC_MODELS;
+  const aiAvailable = !!aiStatus && aiStatus.engine !== "none" && (aiStatus.engine === "byok" || aiStatus.builtInAvailable);
+
+  const handleSaveKey = async () => {
+    setByokSaving(true);
+    setEngineError(null);
+    try {
+      await callFn("saveAiKey", { orgId, provider: byokProvider, model: byokModel, apiKey: byokKey });
+      setByokKey("");
+      setByokOpen(false);
+      await refreshAiStatus();
+    } catch (e) {
+      setEngineError(errMsg(e));
+    }
+    setByokSaving(false);
+  };
+  const handleRemoveKey = async () => {
+    if (!window.confirm("Remove your own API key and switch back to ReachTheSoul AI?")) return;
+    try {
+      await callFn("removeAiKey", { orgId });
+      await refreshAiStatus();
+    } catch (e) {
+      setEngineError(errMsg(e));
+    }
+  };
 
   if (loading) {
     return (
@@ -349,9 +374,9 @@ Respond with ONLY valid JSON (no markdown):
         <div>
           <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
             <Bot size={16} className="text-blue-600" />
-            AI Integration Settings
+            AI Settings
           </h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Configure AI provider, API key, auto-reply, and escalation triggers.</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Choose how the AI answers, what it teaches, and when it hands over to your team.</p>
         </div>
         <Button onClick={handleSave} size="sm" className="gap-1.5 h-8 text-xs" disabled={saving}>
           {saving ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
@@ -359,94 +384,128 @@ Respond with ONLY valid JSON (no markdown):
         </Button>
       </div>
 
-      {/* ── AI Provider & API Key ── */}
+      {/* ── AI Engine ── */}
       <Card className="border border-border shadow-none">
         <CardHeader className="py-3 px-4 border-b border-border">
           <CardTitle className="text-xs font-semibold text-foreground flex items-center gap-2">
-            <Key size={12} className="text-primary" />AI Provider & API Key
+            <Bot size={12} className="text-primary" />AI Engine
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 flex flex-col gap-4">
-          {/* Provider selector */}
-          <div>
-            <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Provider</label>
-            <Select
-              value={settings.provider}
-              onValueChange={(v) => setSettings((s) => ({ ...s, provider: v as any, model: "" }))}
-            >
-              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select AI provider..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="openai">
-                  <span className="flex items-center gap-2">OpenAI (GPT-4o, GPT-4.1)</span>
-                </SelectItem>
-                <SelectItem value="anthropic">
-                  <span className="flex items-center gap-2">Anthropic (Claude Sonnet, Haiku)</span>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {!aiStatus && !engineError && (
+            <p className="text-xs text-muted-foreground flex items-center gap-2"><Loader2 size={12} className="animate-spin" />Checking AI status…</p>
+          )}
+          {engineError && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
+              <XCircle size={14} className="text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-red-700">{engineError}</p>
+            </div>
+          )}
 
-          {/* API Key */}
-          {settings.provider && (
-            <div>
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
-                API Key {settings.provider === "openai" ? "(from platform.openai.com)" : "(from console.anthropic.com)"}
-              </label>
-              <div className="relative">
-                <Key size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type={showApiKey ? "text" : "password"}
-                  value={settings.apiKey}
-                  onChange={(e) => setSettings((s) => ({ ...s, apiKey: e.target.value }))}
-                  placeholder={settings.provider === "openai" ? "sk-proj-..." : "sk-ant-..."}
-                  className="h-9 text-sm pl-8 pr-10 font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowApiKey((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
+          {aiStatus && aiStatus.engine === "byok" && aiStatus.byok && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+              <div>
+                <p className="text-sm font-semibold text-emerald-800 flex items-center gap-1.5"><Key size={13} />Using your own {aiStatus.byok.provider === "anthropic" ? "Anthropic" : "OpenAI"} key</p>
+                <p className="text-xs text-emerald-700 mt-0.5">
+                  Model {aiStatus.byok.model || "—"} · key {aiStatus.byok.keyHint || "saved"} · usage is billed by your provider and is not limited by your plan.
+                  The key is stored on our server only and is never shown in the browser.
+                </p>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                API key is stored encrypted in Firestore. Only admins can view and modify.
+              <div className="flex gap-2 flex-shrink-0">
+                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => { setByokProvider(aiStatus.byok!.provider === "anthropic" ? "anthropic" : "openai"); setByokModel(aiStatus.byok!.model || "gpt-4o-mini"); setByokOpen(true); }}>Replace key</Button>
+                <Button variant="ghost" size="sm" className="h-8 text-xs text-red-600" onClick={handleRemoveKey}>Remove</Button>
+              </div>
+            </div>
+          )}
+
+          {aiStatus && aiStatus.engine === "builtin" && (
+            <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+              <p className="text-sm font-semibold text-blue-900 flex items-center gap-1.5"><Sparkles size={13} />ReachTheSoul AI is included in your plan</p>
+              <p className="text-xs text-blue-800 mt-0.5">
+                Model: {aiStatus.builtInModel} · No API key needed.
+                {!aiStatus.builtInAvailable && " (Not active yet: our team is finishing setup.)"}
               </p>
+              <div className="mt-3">
+                <div className="flex justify-between text-[11px] text-blue-900 mb-1">
+                  <span>AI sessions this month</span>
+                  <span className="font-semibold">{aiStatus.used} / {aiStatus.limit}</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-blue-100 overflow-hidden">
+                  <div className={cn("h-full", aiStatus.used >= aiStatus.limit ? "bg-red-500" : aiStatus.used >= aiStatus.limit * 0.8 ? "bg-amber-500" : "bg-blue-600")}
+                    style={{ width: `${Math.min(100, aiStatus.limit ? (aiStatus.used / aiStatus.limit) * 100 : 0)}%` }} />
+                </div>
+                <p className="text-[10px] text-blue-800/80 mt-1.5 leading-relaxed">
+                  1 session = one conversation answered by AI within 24 hours (up to {aiStatus.maxRepliesPerSession} AI replies, then a person takes over).
+                  Resets on the 1st of each month. When the limit is reached the AI pauses and your team replies as usual.
+                </p>
+              </div>
             </div>
           )}
 
-          {/* Model selector */}
-          {settings.provider && models.length > 0 && (
-            <div>
-              <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Model</label>
-              <Select
-                value={settings.model}
-                onValueChange={(v) => setSettings((s) => ({ ...s, model: v }))}
-              >
-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select model..." /></SelectTrigger>
-                <SelectContent>
-                  {models.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {aiStatus && aiStatus.engine === "none" && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <p className="text-xs text-amber-800">The AI first response is available on Starter and above. Starter includes 300 AI sessions a month.</p>
+              <Button asChild size="sm" className="h-8 text-xs flex-shrink-0"><Link href="/dashboard/billing">See plans</Link></Button>
             </div>
           )}
 
-          {/* Status indicator */}
-          {settings.provider && settings.apiKey && settings.model && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200">
-              <CheckCircle size={14} className="text-emerald-600" />
-              <p className="text-xs text-emerald-700 font-medium">
-                AI configured: {settings.provider === "openai" ? "OpenAI" : "Anthropic"} / {settings.model}
-              </p>
-            </div>
-          )}
-
-          {!settings.provider && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
-              <AlertTriangle size={14} className="text-amber-600" />
-              <p className="text-xs text-amber-700">Select a provider and enter your API key to enable AI.</p>
+          {/* Bring your own key */}
+          {aiStatus && (
+            <div className="border-t border-border pt-3">
+              {aiStatus.byokAllowed ? (
+                <>
+                  {aiStatus.engine !== "byok" && !byokOpen && (
+                    <button className="text-xs text-primary font-medium" onClick={() => setByokOpen(true)}>Use your own OpenAI or Anthropic key instead</button>
+                  )}
+                  {byokOpen && (
+                    <div className="flex flex-col gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Provider</label>
+                          <Select value={byokProvider} onValueChange={(v) => { setByokProvider(v as any); setByokModel(v === "anthropic" ? ANTHROPIC_MODELS[0].id : "gpt-4o-mini"); }}>
+                            <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="openai">OpenAI</SelectItem>
+                              <SelectItem value="anthropic">Anthropic</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Model</label>
+                          <Select value={byokModel} onValueChange={setByokModel}>
+                            <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {byokModels.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">API key</label>
+                        <div className="relative">
+                          <Key size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                          <Input type={showApiKey ? "text" : "password"} value={byokKey} onChange={(e) => setByokKey(e.target.value)}
+                            placeholder={byokProvider === "openai" ? "sk-proj-..." : "sk-ant-..."} className="h-9 text-sm pl-8 pr-10 font-mono" autoComplete="off" />
+                          <button type="button" onClick={() => setShowApiKey((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                            {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mt-1">We test the key, then store it on our server only. It is never shown again in the browser, and your provider bills its usage directly.</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="h-8 text-xs" onClick={handleSaveKey} disabled={!byokKey.trim() || byokSaving}>
+                          {byokSaving ? <Loader2 size={12} className="animate-spin mr-1" /> : null}Test & save key
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setByokOpen(false); setByokKey(""); }}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-[10px] text-muted-foreground">
+                  Need to use your own OpenAI or Anthropic key? It&apos;s available on Enterprise or on request. <a href="mailto:hello@reachthesoul.org" className="text-primary">Contact us</a>.
+                </p>
+              )}
             </div>
           )}
         </CardContent>
@@ -459,7 +518,7 @@ Respond with ONLY valid JSON (no markdown):
             label: "AI Enabled", desc: "Master toggle for all AI features",
             value: settings.enabled,
             onToggle: () => setSettings((s) => ({ ...s, enabled: !s.enabled })),
-            color: "blue", disabled: !settings.apiKey,
+            color: "blue", disabled: !aiAvailable && !settings.enabled,
           },
           {
             label: "Auto Reply", desc: "AI replies automatically without human review",
@@ -468,15 +527,15 @@ Respond with ONLY valid JSON (no markdown):
             color: "violet", disabled: !settings.enabled,
           },
           {
-            label: "Escalation Detection", desc: "Detect and flag sensitive messages",
+            label: "Escalation Detection", desc: "Tag, hand over, or alert on sensitive messages",
             value: settings.escalationTriggers.some((t) => t.enabled),
             onToggle: () => {}, color: "orange", readOnly: true,
           },
           {
-            label: "AI Crisis Detection", desc: "Use LLM to detect crisis beyond keywords",
+            label: "AI Crisis Detection", desc: "AI reads every message for crisis, even without keywords",
             value: settings.aiContextualDetection && settings.enabled,
             onToggle: () => setSettings((s) => ({ ...s, aiContextualDetection: !s.aiContextualDetection })),
-            color: "red", disabled: !settings.enabled || !settings.apiKey,
+            color: "red", disabled: !settings.enabled || !aiAvailable,
           },
         ].map((item) => (
           <Card key={item.label} className="border border-border shadow-none">
@@ -504,25 +563,77 @@ Respond with ONLY valid JSON (no markdown):
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left column */}
-        <div className="flex flex-col gap-4">
-          {/* System Prompt */}
-          <Card className="border border-border shadow-none">
-            <CardHeader className="py-3 px-4 border-b border-border">
-              <CardTitle className="text-xs font-semibold text-foreground flex items-center gap-2">
-                <Zap size={12} className="text-primary" />System Prompt
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
+      {/* ── AI Response Prompt ── */}
+      <Card className="border border-border shadow-none">
+        <CardHeader className="py-3 px-4 border-b border-border flex flex-row items-center justify-between">
+          <CardTitle className="text-xs font-semibold text-foreground flex items-center gap-2">
+            <Zap size={12} className="text-primary" />AI Response Prompt
+          </CardTitle>
+          <div className="flex rounded-md border border-border overflow-hidden text-[11px]">
+            <button className={cn("px-3 py-1", promptMode === "guided" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground")}
+              onClick={() => { if (promptMode === "custom" && !window.confirm("Switch to guided mode? The full prompt will be rebuilt from the fields below.")) return; setPromptMode("guided"); }}>Guided</button>
+            <button className={cn("px-3 py-1", promptMode === "custom" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground")}
+              onClick={() => { if (promptMode === "guided") setSettings((s) => ({ ...s, systemPrompt: buildPrompt(profile) })); setPromptMode("custom"); }}>Full prompt</button>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4">
+          {promptMode === "guided" ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <PromptField label="Church / ministry name" value={profile.churchName} onChange={(v) => setP("churchName", v)} placeholder="Grace Community Church" />
+              <PromptField label="Assistant name (optional)" value={profile.assistantName} onChange={(v) => setP("assistantName", v)} placeholder="Grace Care Team" />
+              <PromptField label="Tradition / denomination" value={profile.denomination} onChange={(v) => setP("denomination", v)} placeholder="e.g. Evangelical, Baptist, Pentecostal, Reformed, Catholic" />
+              <PromptField label="Bible translation" value={profile.bibleTranslation} onChange={(v) => setP("bibleTranslation", v)} placeholder="e.g. NIV, ESV, NKJV, TB (Terjemahan Baru)" />
+              <div className="md:col-span-2">
+                <PromptField multiline label="Beliefs & doctrine (statement of faith)" value={profile.beliefs} onChange={(v) => setP("beliefs", v)}
+                  placeholder="Paste your statement of faith or the key teachings the AI must follow." rows={4} />
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Tone</label>
+                <Select value={profile.tone} onValueChange={(v) => setP("tone", v)}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="warm">Warm & pastoral</SelectItem>
+                    <SelectItem value="formal">Respectful & formal</SelectItem>
+                    <SelectItem value="casual">Friendly & conversational</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Reply length</label>
+                <Select value={profile.length} onValueChange={(v) => setP("length", v)}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="short">Short (2–4 sentences)</SelectItem>
+                    <SelectItem value="medium">Medium (up to 3 short paragraphs)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="md:col-span-2">
+                <PromptField label="Language" value={profile.languages} onChange={(v) => setP("languages", v)} placeholder="Reply in the same language the person writes in." />
+              </div>
+              <PromptField multiline label="How to respond to prayer requests" value={profile.prayerApproach} onChange={(v) => setP("prayerApproach", v)} rows={4} />
+              <PromptField multiline label="Boundaries — topics to hand to a pastor" value={profile.boundaries} onChange={(v) => setP("boundaries", v)} rows={4} />
+              <PromptField multiline label="Church info (services, location, contact)" value={profile.serviceInfo} onChange={(v) => setP("serviceInfo", v)}
+                placeholder="Sunday services 9am & 11am, 123 Main St. Office: (555) 123-4567" rows={3} />
+              <PromptField multiline label="Next steps to invite people to" value={profile.nextSteps} onChange={(v) => setP("nextSteps", v)}
+                placeholder="Small groups: https://… · Book a counseling call: https://… · Plan a visit: https://…" rows={3} />
+              <div className="md:col-span-2">
+                <PromptField multiline label="Additional instructions (optional)" value={profile.extra} onChange={(v) => setP("extra", v)} rows={2} />
+              </div>
+              <details className="md:col-span-2">
+                <summary className="text-[11px] text-muted-foreground cursor-pointer">Preview the prompt the AI receives</summary>
+                <pre className="mt-2 text-[11px] whitespace-pre-wrap bg-muted/40 border border-border rounded-md p-3 max-h-72 overflow-auto">{composedPrompt}</pre>
+              </details>
+            </div>
+          ) : (
+            <div>
               <p className="text-[10px] text-muted-foreground mb-2 leading-relaxed">
-                Main AI instructions. Determines how AI responds to all incoming messages.
+                The complete instructions the AI receives. Edit freely: persona, doctrine, tone, boundaries and SOP.
               </p>
               <Textarea
                 value={settings.systemPrompt}
                 onChange={(e) => setSettings((s) => ({ ...s, systemPrompt: e.target.value }))}
-                className="text-xs min-h-[220px] resize-none font-mono leading-relaxed"
-                disabled={!settings.enabled}
+                className="text-xs min-h-[260px] font-mono leading-relaxed"
               />
               <button
                 onClick={() => setSettings((s) => ({ ...s, systemPrompt: DEFAULT_SYSTEM_PROMPT }))}
@@ -530,9 +641,17 @@ Respond with ONLY valid JSON (no markdown):
               >
                 <RotateCcw size={9} />Reset to default
               </button>
-            </CardContent>
-          </Card>
+            </div>
+          )}
+          <p className="text-[10px] text-muted-foreground mt-3">
+            Safety rules are always added on top: the AI says it is an AI if asked, avoids medical/legal/financial advice, and points people in danger to emergency help.
+          </p>
+        </CardContent>
+      </Card>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left column */}
+        <div className="flex flex-col gap-4">
           {/* Channel toggles */}
           <Card className="border border-border shadow-none">
             <CardHeader className="py-3 px-4 border-b border-border">
@@ -573,6 +692,10 @@ Respond with ONLY valid JSON (no markdown):
               <CardTitle className="text-xs font-semibold text-foreground flex items-center gap-2">
                 <Shield size={12} className="text-orange-600" />Escalation Triggers
               </CardTitle>
+              <p className="text-[10px] text-muted-foreground leading-relaxed mt-1">
+                Prayer, salvation and baptism words tag the conversation for follow-up while the AI keeps replying.
+                Crisis and counseling words are checked by the AI for meaning. Your team is alerted only when someone may be in danger now.
+              </p>
             </CardHeader>
             <CardContent className="p-0">
               {settings.escalationTriggers.map((trigger) => {
@@ -586,7 +709,9 @@ Respond with ONLY valid JSON (no markdown):
                       <span className="text-muted-foreground">{TRIGGER_ICONS[trigger.reason] ?? <Shield size={14} />}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-foreground">{trigger.label}</p>
-                        <p className="text-[10px] text-muted-foreground">{trigger.keywords.length} keywords</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {trigger.keywords.length} keywords · {triggerMode(trigger.reason) === "tag" ? "Tag for follow-up" : triggerMode(trigger.reason) === "check" ? "AI checks meaning, alerts if crisis" : "Hand to a person"}
+                        </p>
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleTrigger(trigger.reason); }}
@@ -604,7 +729,7 @@ Respond with ONLY valid JSON (no markdown):
                     </div>
                     {isExpanded && (
                       <div className="px-4 pb-3 bg-muted/20">
-                        <p className="text-[10px] text-muted-foreground mt-1 mb-2 font-semibold uppercase tracking-wide">Keywords — any match triggers escalation</p>
+                        <p className="text-[10px] text-muted-foreground mt-1 mb-2 font-semibold uppercase tracking-wide">Keywords</p>
                         <div className="flex flex-wrap gap-1.5 mb-2">
                           {trigger.keywords.map((kw) => (
                             <span key={kw} className="flex items-center gap-1 text-[10px] bg-background border border-border rounded-full px-2 py-0.5 text-foreground">
@@ -646,7 +771,7 @@ Respond with ONLY valid JSON (no markdown):
               </CardHeader>
               <CardContent className="p-4 flex flex-col gap-2">
                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  When enabled, if no keyword match is found, the AI will analyze the full message and conversation context to detect crisis signals that keywords might miss.
+                  Crisis and counseling keywords are always checked by the AI. With this on, the AI also reads every message for crisis signals that use no keyword at all.
                 </p>
                 <div className="text-[10px] text-muted-foreground space-y-1">
                   <p className="font-semibold text-purple-800">Examples it can catch:</p>
@@ -659,7 +784,7 @@ Respond with ONLY valid JSON (no markdown):
                 </div>
                 <div className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-amber-50 border border-amber-200 mt-1">
                   <AlertTriangle size={10} className="text-amber-600 flex-shrink-0" />
-                  <p className="text-[10px] text-amber-700">Uses 1 extra AI call per message when keywords don&apos;t match. Minimal cost impact with high safety value.</p>
+                  <p className="text-[10px] text-amber-700">Uses 1 small extra AI call per message. It never counts toward your monthly AI sessions.</p>
                 </div>
               </CardContent>
             </Card>
@@ -693,7 +818,7 @@ Respond with ONLY valid JSON (no markdown):
             </CardHeader>
             <CardContent className="p-4 flex flex-col gap-3">
               <p className="text-[10px] text-muted-foreground">
-                When an escalation trigger is detected, these people will receive an <strong>instant WhatsApp alert</strong> with the respondent's name, message, and ticket link. Add your on-call pastor, youth leader, or crisis counselor.
+                When an escalation trigger is detected, these people get an <strong>email alert</strong> (and a WhatsApp alert where WhatsApp alerts are set up) with the person&apos;s name, message and a link to the conversation. Add your on-call pastor or crisis counselor.
               </p>
               {emergencyContacts.map((contact, idx) => (
                 <div key={idx} className="flex items-center gap-2">
@@ -714,8 +839,18 @@ Respond with ONLY valid JSON (no markdown):
                       updated[idx] = { ...updated[idx], phone: e.target.value };
                       setEmergencyContacts(updated);
                     }}
-                    placeholder="WhatsApp number (e.g. 6281234567890)"
+                    placeholder="WhatsApp (optional, e.g. 15551234567)"
                     className="h-8 text-xs flex-1 font-mono"
+                  />
+                  <Input
+                    value={contact.email ?? ""}
+                    onChange={(e) => {
+                      const updated = [...emergencyContacts];
+                      updated[idx] = { ...updated[idx], email: e.target.value };
+                      setEmergencyContacts(updated);
+                    }}
+                    placeholder="Email"
+                    className="h-8 text-xs flex-1"
                   />
                   <Input
                     value={contact.role}
@@ -734,7 +869,7 @@ Respond with ONLY valid JSON (no markdown):
                 </div>
               ))}
               <button
-                onClick={() => setEmergencyContacts([...emergencyContacts, { name: "", phone: "", role: "" }])}
+                onClick={() => setEmergencyContacts([...emergencyContacts, { name: "", phone: "", role: "", email: "" }])}
                 className="text-xs text-primary hover:text-primary/80 font-medium w-fit"
               >+ Add emergency contact</button>
             </CardContent>
@@ -754,12 +889,12 @@ Respond with ONLY valid JSON (no markdown):
                 onChange={(e) => setTestInput(e.target.value)}
                 placeholder="Example: I am going through a family crisis, can you pray for me?"
                 className="text-xs min-h-[60px] resize-none"
-                disabled={!settings.provider || !settings.apiKey}
+                disabled={!aiAvailable}
               />
               <Button
                 size="sm"
                 onClick={handleTest}
-                disabled={!testInput.trim() || testLoading || !settings.provider || !settings.apiKey}
+                disabled={!testInput.trim() || testLoading || !aiAvailable}
                 className="gap-1.5 text-xs h-8"
               >
                 {testLoading ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
@@ -774,44 +909,35 @@ Respond with ONLY valid JSON (no markdown):
               )}
 
               {/* Escalation Detection Result */}
-              {testEscalation && (
-                <div className={cn(
-                  "p-3 rounded-lg border",
-                  testEscalation.trigger
-                    ? "bg-red-50 border-red-300"
-                    : "bg-emerald-50 border-emerald-200"
-                )}>
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    {testEscalation.trigger ? (
-                      <>
-                        <AlertTriangle size={12} className="text-red-600" />
-                        <span className="text-[10px] font-semibold text-red-700">
-                          ESCALATION DETECTED — {testEscalation.method === "ai_contextual" ? "AI Contextual" : "Keyword Match"}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle size={12} className="text-emerald-600" />
-                        <span className="text-[10px] font-semibold text-emerald-700">
-                          No escalation detected
-                          {testEscalation.confidence != null && ` (confidence: ${Math.round(testEscalation.confidence * 100)}%)`}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  {testEscalation.trigger && (
-                    <div className="flex flex-col gap-1">
-                      <p className="text-xs text-red-800 font-medium">Trigger: {testEscalation.trigger}</p>
-                      {testEscalation.confidence != null && (
-                        <p className="text-[10px] text-red-700">Confidence: {Math.round(testEscalation.confidence * 100)}%</p>
-                      )}
-                      {testEscalation.analysis && (
-                        <p className="text-[10px] text-red-700 italic">AI Analysis: {testEscalation.analysis}</p>
-                      )}
+              {testEscalation && (() => {
+                const m = testEscalation.method;
+                const crisis = m === "ai_contextual" || m === "keyword";
+                const style = crisis ? "bg-red-50 border-red-300 text-red-800"
+                  : m === "handoff" ? "bg-orange-50 border-orange-200 text-orange-800"
+                  : m === "tag" ? "bg-violet-50 border-violet-200 text-violet-800"
+                  : "bg-emerald-50 border-emerald-200 text-emerald-800";
+                const title = m === "ai_contextual" ? "CRISIS CONFIRMED BY AI — team alerted"
+                  : m === "keyword" ? "CRISIS WORDS — team alerted (fallback)"
+                  : m === "handoff" ? "HANDED TO A PERSON — no urgent alert"
+                  : m === "tag" ? "TAGGED FOR FOLLOW-UP — AI keeps replying"
+                  : "No crisis detected";
+                return (
+                  <div className={cn("p-3 rounded-lg border", style)}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      {crisis ? <AlertTriangle size={12} /> : <CheckCircle size={12} />}
+                      <span className="text-[10px] font-semibold">
+                        {title}
+                        {!m && testEscalation.confidence != null && ` (risk ${Math.round(testEscalation.confidence * 100)}%)`}
+                      </span>
                     </div>
-                  )}
-                </div>
-              )}
+                    {testEscalation.trigger && <p className="text-xs font-medium">{testEscalation.trigger}</p>}
+                    {testEscalation.confidence != null && m && (
+                      <p className="text-[10px]">Confidence: {Math.round(testEscalation.confidence * 100)}%</p>
+                    )}
+                    {testEscalation.analysis && <p className="text-[10px] italic mt-0.5">{testEscalation.analysis}</p>}
+                  </div>
+                );
+              })()}
 
               {testResult && (
                 <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
@@ -823,9 +949,10 @@ Respond with ONLY valid JSON (no markdown):
                 </div>
               )}
 
-              {(!settings.provider || !settings.apiKey) && (
-                <p className="text-[10px] text-muted-foreground italic">Select a provider and enter your API key first to test.</p>
+              {!aiAvailable && (
+                <p className="text-[10px] text-muted-foreground italic">The AI isn&apos;t available on this workspace yet (see AI Engine above).</p>
               )}
+              <p className="text-[10px] text-muted-foreground">Tests use the prompt on screen (even before saving) and don&apos;t count toward your monthly AI sessions.</p>
             </CardContent>
           </Card>
         </div>
@@ -842,5 +969,20 @@ export default function AISettingsPage() {
         <AISettingsContent />
       </SetupRequestGate>
     </FeatureGate>
+  );
+}
+
+function PromptField({ label, value, onChange, placeholder, multiline, rows }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean; rows?: number;
+}) {
+  return (
+    <div>
+      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">{label}</label>
+      {multiline ? (
+        <Textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows ?? 3} className="text-xs leading-relaxed" />
+      ) : (
+        <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-9 text-sm" />
+      )}
+    </div>
   );
 }

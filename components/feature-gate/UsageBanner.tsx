@@ -1,4 +1,5 @@
 "use client";
+import { aiSessionsThisMonth } from "@/lib/ai-client";
 import { useOrgStore } from "@/store/org-store";
 import { getPlanConfig, getUsagePercentage, GRACE_PERIOD_DAYS } from "@/lib/plans";
 import type { PlanTier } from "@/types";
@@ -25,7 +26,7 @@ export function UsageBanner() {
   // Check each metric
   const metrics = [
     { label: "Respondents", current: usage.currentRespondents ?? 0, max: config.maxRespondents, key: "respondents" },
-    { label: "AI Conversations", current: usage.aiConversationsThisMonth ?? 0, max: config.maxAIConversations, key: "ai" },
+    { label: "AI sessions", current: aiSessionsThisMonth(usage), max: (activeOrg as any).aiConfig?.engine === "byok" ? 0 : config.maxAIConversations, key: "ai" },
     { label: "WhatsApp Conversations", current: usage.waConversationsThisMonth ?? 0, max: config.maxWhatsAppConversations, key: "wa" },
   ];
 

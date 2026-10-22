@@ -1,4 +1,5 @@
 "use client";
+import { aiSessionsThisMonth } from "@/lib/ai-client";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useOrgStore } from "@/store/org-store";
@@ -30,7 +31,7 @@ export default function BillingPage() {
   const usageMetrics = [
     { label: "Team Members", current: usage?.currentUsers ?? 0, max: currentConfig.maxUsers },
     { label: "Respondents", current: usage?.currentRespondents ?? 0, max: currentConfig.maxRespondents },
-    { label: "AI Conversations / month", current: usage?.aiConversationsThisMonth ?? 0, max: currentConfig.maxAIConversations },
+    { label: (activeOrg as any)?.aiConfig?.engine === "byok" ? "AI sessions / month (own key, not limited)" : "AI sessions / month", current: aiSessionsThisMonth(usage), max: (activeOrg as any)?.aiConfig?.engine === "byok" ? 0 : currentConfig.maxAIConversations },
     { label: "WA Initiative Conv. / month", current: usage?.waConversationsThisMonth ?? 0, max: currentConfig.maxWhatsAppInitiative },
   ];
 
@@ -392,7 +393,7 @@ export default function BillingPage() {
                 <tr><td colSpan={5} className="px-3 py-2 bg-muted/20 font-semibold text-foreground text-[11px] uppercase tracking-wider">Limits & quotas</td></tr>
                 <tr className="border-t border-muted/30"><td className="p-3 text-foreground">Max users</td>{tierOrder.map(t => <td key={t} className="text-center p-3 font-medium">{formatLimit(PLAN_CONFIGS[t].maxUsers)}</td>)}</tr>
                 <tr className="border-t border-muted/30 bg-muted/5"><td className="p-3 text-foreground">Max respondents</td>{tierOrder.map(t => <td key={t} className="text-center p-3 font-medium">{formatLimit(PLAN_CONFIGS[t].maxRespondents)}</td>)}</tr>
-                <tr className="border-t border-muted/30"><td className="p-3 text-foreground">AI conversations / month</td>{tierOrder.map(t => <td key={t} className="text-center p-3 font-medium">{PLAN_CONFIGS[t].maxAIConversations === 0 ? "\u2014" : formatLimit(PLAN_CONFIGS[t].maxAIConversations)}</td>)}</tr>
+                <tr className="border-t border-muted/30"><td className="p-3 text-foreground">AI sessions / month</td>{tierOrder.map(t => <td key={t} className="text-center p-3 font-medium">{PLAN_CONFIGS[t].maxAIConversations === 0 ? "\u2014" : formatLimit(PLAN_CONFIGS[t].maxAIConversations)}</td>)}</tr>
                 <tr className="border-t border-muted/30 bg-muted/5"><td className="p-3 text-foreground">WA initiative conv. / month</td>{tierOrder.map(t => <td key={t} className="text-center p-3 font-medium">{PLAN_CONFIGS[t].maxWhatsAppInitiative === 0 ? "\u2014" : formatLimit(PLAN_CONFIGS[t].maxWhatsAppInitiative)}</td>)}</tr>
                 <tr className="border-t border-muted/30"><td className="p-3 text-foreground">Incoming WA messages</td>{tierOrder.map(t => <td key={t} className="text-center p-3">{PLAN_CONFIGS[t].unlimitedWAInbound ? <span className="text-green-600 font-medium">Unlimited</span> : "\u2014"}</td>)}</tr>
 

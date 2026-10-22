@@ -259,6 +259,8 @@ function ChannelConfigPanel({ orgId, projectId }: { orgId: string; projectId: st
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showTokens, setShowTokens] = useState(false);
+  const [savedHints, setSavedHints] = useState<Record<string, string>>({});
+  const ph = (k: string, f: string) => (savedHints[k] ? `saved ${savedHints[k]} (blank = keep)` : f);
 
   const region = "asia-southeast1";
   const baseUrl = `https://${region}-${projectId}.cloudfunctions.net`;
@@ -275,23 +277,15 @@ function ChannelConfigPanel({ orgId, projectId }: { orgId: string; projectId: st
     if (loaded) return;
     (async () => {
       try {
-        const [{ doc, getDoc }, { db }] = await Promise.all([
-          import("firebase/firestore"), import("@/lib/firebase"),
-        ]);
-        const snap = await getDoc(doc(db, "organizations", orgId));
-        if (snap.exists()) {
-          const cc = snap.data()?.channelConfig ?? {};
-          setConfig({
-            active_whatsapp_provider: cc.active_whatsapp_provider ?? "fonnte",
-            fonnte_token: cc.fonnte_token ?? "",
-            fonnte_device_number: cc.fonnte_device_number ?? "",
-            meta_phone_number_id: cc.meta_phone_number_id ?? "",
-            meta_access_token: cc.meta_access_token ?? "",
-            meta_app_secret: cc.meta_app_secret ?? "",
-            facebook_page_token: cc.facebook_page_token ?? "",
-            instagram_token: cc.instagram_token ?? "",
-          });
-        }
+        const { callFn } = await import("@/lib/ai-client");
+        const r = await callFn<{ config: Record<string, string>; saved: Record<string, string> }>("getChannelSettings", { orgId });
+        setConfig({
+          active_whatsapp_provider: r.config?.active_whatsapp_provider || "fonnte",
+          fonnte_device_number: r.config?.fonnte_device_number ?? "",
+          meta_phone_number_id: r.config?.meta_phone_number_id ?? "",
+          fonnte_token: "", meta_access_token: "", meta_app_secret: "", facebook_page_token: "", instagram_token: "",
+        });
+        setSavedHints(r.saved ?? {});
         setLoaded(true);
       } catch (err) {
         console.error("Failed to load channel config:", err);
@@ -303,13 +297,11 @@ function ChannelConfigPanel({ orgId, projectId }: { orgId: string; projectId: st
   const saveConfig = async () => {
     setSaving(true);
     try {
-      const [{ doc, updateDoc, serverTimestamp }, { db }] = await Promise.all([
-        import("firebase/firestore"), import("@/lib/firebase"),
-      ]);
-      await updateDoc(doc(db, "organizations", orgId), {
-        channelConfig: config,
-        updatedAt: serverTimestamp(),
-      });
+      const { callFn } = await import("@/lib/ai-client");
+      await callFn("saveChannelSettings", { orgId, config }); // blank tokens keep the saved value
+      const r = await callFn<{ saved: Record<string, string> }>("getChannelSettings", { orgId });
+      setSavedHints(r.saved ?? {});
+      setConfig((c) => ({ ...c, fonnte_token: "", meta_access_token: "", meta_app_secret: "", facebook_page_token: "", instagram_token: "" }));
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err) {
@@ -387,7 +379,7 @@ function ChannelConfigPanel({ orgId, projectId }: { orgId: string; projectId: st
           </div>
           <div>
             <label className="text-[9px] text-muted-foreground block mb-0.5">Fonnte Token</label>
-            <input type={showTokens ? "text" : "password"} value={config.fonnte_token} onChange={(e) => updateField("fonnte_token", e.target.value)} placeholder="token..." className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
+            <input type={showTokens ? "text" : "password"} value={config.fonnte_token} onChange={(e) => updateField("fonnte_token", e.target.value)} placeholder={ph("fonnte_token", "token...")} className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
           </div>
           <div>
             <label className="text-[9px] text-muted-foreground block mb-0.5">Meta Phone Number ID</label>
@@ -395,19 +387,19 @@ function ChannelConfigPanel({ orgId, projectId }: { orgId: string; projectId: st
           </div>
           <div>
             <label className="text-[9px] text-muted-foreground block mb-0.5">Meta Access Token</label>
-            <input type={showTokens ? "text" : "password"} value={config.meta_access_token} onChange={(e) => updateField("meta_access_token", e.target.value)} placeholder="EAAxxxx..." className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
+            <input type={showTokens ? "text" : "password"} value={config.meta_access_token} onChange={(e) => updateField("meta_access_token", e.target.value)} placeholder={ph("meta_access_token", "EAAxxxx...")} className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
           </div>
           <div>
             <label className="text-[9px] text-muted-foreground block mb-0.5">Meta App Secret</label>
-            <input type={showTokens ? "text" : "password"} value={config.meta_app_secret} onChange={(e) => updateField("meta_app_secret", e.target.value)} placeholder="abc123..." className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
+            <input type={showTokens ? "text" : "password"} value={config.meta_app_secret} onChange={(e) => updateField("meta_app_secret", e.target.value)} placeholder={ph("meta_app_secret", "abc123...")} className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
           </div>
           <div>
             <label className="text-[9px] text-muted-foreground block mb-0.5">Facebook Page Token</label>
-            <input type={showTokens ? "text" : "password"} value={config.facebook_page_token} onChange={(e) => updateField("facebook_page_token", e.target.value)} placeholder="Page token..." className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
+            <input type={showTokens ? "text" : "password"} value={config.facebook_page_token} onChange={(e) => updateField("facebook_page_token", e.target.value)} placeholder={ph("facebook_page_token", "Page token...")} className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
           </div>
           <div>
             <label className="text-[9px] text-muted-foreground block mb-0.5">Instagram Token</label>
-            <input type={showTokens ? "text" : "password"} value={config.instagram_token} onChange={(e) => updateField("instagram_token", e.target.value)} placeholder="IG token..." className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
+            <input type={showTokens ? "text" : "password"} value={config.instagram_token} onChange={(e) => updateField("instagram_token", e.target.value)} placeholder={ph("instagram_token", "IG token...")} className="w-full h-7 px-2 text-[10px] font-mono rounded border border-border bg-background" />
           </div>
         </div>
       </div>

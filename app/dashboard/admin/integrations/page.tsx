@@ -154,27 +154,22 @@ export default function IntegrationsPage() {
   const [configSaved, setConfigSaved] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [showTokens, setShowTokens] = useState(false);
+  // Masked hints of tokens already saved on the server (tokens are never sent back to the browser)
+  const [savedHints, setSavedHints] = useState<Record<string, string>>({});
+  const savedPh = (key: string, fallback: string) => savedHints[key] ? `Saved (${savedHints[key]}). Leave blank to keep` : fallback;
 
   // Load channel config from org
   useEffect(() => {
     if (!orgId || configLoaded) return;
     async function loadConfig() {
       try {
-        const [{ doc, getDoc }, { db }] = await Promise.all([
-          import("firebase/firestore"), import("@/lib/firebase"),
-        ]);
-        const snap = await getDoc(doc(db, "organizations", orgId));
-        if (snap.exists()) {
-          const cc = snap.data()?.channelConfig ?? {};
-          setWaProvider(cc.active_whatsapp_provider ?? "fonnte");
-          setFonnteToken(cc.fonnte_token ?? "");
-          setFonnteDeviceNumber(cc.fonnte_device_number ?? "");
-          setMetaPhoneId(cc.meta_phone_number_id ?? "");
-          setMetaToken(cc.meta_access_token ?? "");
-          setMetaAppSecret(cc.meta_app_secret ?? "");
-          setFbPageToken(cc.facebook_page_token ?? "");
-          setIgToken(cc.instagram_token ?? "");
-        }
+        const { callFn } = await import("@/lib/ai-client");
+        const r = await callFn<{ config: Record<string, string>; saved: Record<string, string> }>("getChannelSettings", { orgId });
+        const cc = r.config ?? {};
+        setWaProvider((cc.active_whatsapp_provider as any) || "fonnte");
+        setFonnteDeviceNumber(cc.fonnte_device_number ?? "");
+        setMetaPhoneId(cc.meta_phone_number_id ?? "");
+        setSavedHints(r.saved ?? {});
         setConfigLoaded(true);
       } catch (err) {
         console.error("Failed to load channel config:", err);
@@ -188,22 +183,24 @@ export default function IntegrationsPage() {
     if (!orgId) return;
     setConfigSaving(true);
     try {
-      const [{ doc, updateDoc, serverTimestamp }, { db }] = await Promise.all([
-        import("firebase/firestore"), import("@/lib/firebase"),
-      ]);
-      await updateDoc(doc(db, "organizations", orgId), {
-        channelConfig: {
+      const { callFn } = await import("@/lib/ai-client");
+      // Blank token fields keep the saved value; tokens are stored server-side only
+      await callFn("saveChannelSettings", {
+        orgId,
+        config: {
           active_whatsapp_provider: waProvider,
-          fonnte_token: fonnteToken.trim(),
-          fonnte_device_number: fonnteDeviceNumber.trim().replace(/\D/g, ""),
-          meta_phone_number_id: metaPhoneId.trim(),
-          meta_access_token: metaToken.trim(),
-          meta_app_secret: metaAppSecret.trim(),
-          facebook_page_token: fbPageToken.trim(),
-          instagram_token: igToken.trim(),
+          fonnte_device_number: fonnteDeviceNumber,
+          meta_phone_number_id: metaPhoneId,
+          fonnte_token: fonnteToken,
+          meta_access_token: metaToken,
+          meta_app_secret: metaAppSecret,
+          facebook_page_token: fbPageToken,
+          instagram_token: igToken,
         },
-        updatedAt: serverTimestamp(),
       });
+      const r = await callFn<{ saved: Record<string, string> }>("getChannelSettings", { orgId });
+      setSavedHints(r.saved ?? {});
+      setFonnteToken(""); setMetaToken(""); setMetaAppSecret(""); setFbPageToken(""); setIgToken("");
       setConfigSaved(true);
       setTimeout(() => setConfigSaved(false), 3000);
     } catch (err) {
@@ -272,7 +269,7 @@ export default function IntegrationsPage() {
                     type={showTokens ? "text" : "password"}
                     value={fonnteToken}
                     onChange={(e) => setFonnteToken(e.target.value)}
-                    placeholder="e.g. 9kRcuqZiM8PqhDuZZfdu"
+                    placeholder={savedPh("fonnte_token", "e.g. 9kRcuqZiM8PqhDuZZfdu")}
                     className="h-8 text-xs font-mono"
                   />
                 </div>
@@ -303,11 +300,11 @@ export default function IntegrationsPage() {
                 </div>
                 <div>
                   <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Permanent Access Token</label>
-                  <Input type={showTokens ? "text" : "password"} value={metaToken} onChange={(e) => setMetaToken(e.target.value)} placeholder="EAAxxxxxxx..." className="h-8 text-xs font-mono" />
+                  <Input type={showTokens ? "text" : "password"} value={metaToken} onChange={(e) => setMetaToken(e.target.value)} placeholder={savedPh("meta_access_token", "EAAxxxxxxx...")} className="h-8 text-xs font-mono" />
                 </div>
                 <div>
                   <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1">App Secret (for webhook verification)</label>
-                  <Input type={showTokens ? "text" : "password"} value={metaAppSecret} onChange={(e) => setMetaAppSecret(e.target.value)} placeholder="abc123def456..." className="h-8 text-xs font-mono" />
+                  <Input type={showTokens ? "text" : "password"} value={metaAppSecret} onChange={(e) => setMetaAppSecret(e.target.value)} placeholder={savedPh("meta_app_secret", "abc123def456...")} className="h-8 text-xs font-mono" />
                 </div>
               </div>
             </div>
@@ -316,20 +313,21 @@ export default function IntegrationsPage() {
           {/* Facebook */}
           <div>
             <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Facebook Page Token <span className="text-muted-foreground/50">(optional)</span></label>
-            <Input type={showTokens ? "text" : "password"} value={fbPageToken} onChange={(e) => setFbPageToken(e.target.value)} placeholder="Page Access Token" className="h-8 text-xs font-mono" />
+            <Input type={showTokens ? "text" : "password"} value={fbPageToken} onChange={(e) => setFbPageToken(e.target.value)} placeholder={savedPh("facebook_page_token", "Page Access Token")} className="h-8 text-xs font-mono" />
           </div>
 
           {/* Instagram */}
           <div>
             <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Instagram Token <span className="text-muted-foreground/50">(optional)</span></label>
-            <Input type={showTokens ? "text" : "password"} value={igToken} onChange={(e) => setIgToken(e.target.value)} placeholder="Instagram Graph API Token" className="h-8 text-xs font-mono" />
+            <Input type={showTokens ? "text" : "password"} value={igToken} onChange={(e) => setIgToken(e.target.value)} placeholder={savedPh("instagram_token", "Instagram Graph API Token")} className="h-8 text-xs font-mono" />
           </div>
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-2 border-t border-border">
             <button onClick={() => setShowTokens(!showTokens)} className="text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-              {showTokens ? "🙈 Hide tokens" : "👁 Show tokens"}
+              {showTokens ? "🙈 Hide typing" : "👁 Show typing"}
             </button>
+            <span className="text-[10px] text-muted-foreground hidden sm:inline">Tokens are stored on our server only and are never shown again.</span>
             <div className="flex items-center gap-2">
               {configSaved && <span className="text-xs text-green-600 font-medium flex items-center gap-1"><Check size={12} /> Saved!</span>}
               <button onClick={saveChannelConfig} disabled={configSaving} className="px-4 py-1.5 rounded-md bg-primary text-white text-xs font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">
