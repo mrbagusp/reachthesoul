@@ -96,15 +96,26 @@ export function Sidebar({ role, userName, onLogout, mobileOpen, onMobileClose }:
       "fixed inset-y-0 left-0 z-50 transition-transform duration-200 lg:static lg:translate-x-0",
       mobileOpen ? "translate-x-0" : "-translate-x-full"
     )}>
-      {/* Logo */}
+      {/* Logo — shows the organization's logo + name when set, else the RTS mark */}
       <div className="flex items-center gap-2.5 px-5 py-5 border-b border-sidebar-border">
-        <div className="w-8 h-8 rounded-md bg-[#1A2942] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
-          <div className="absolute left-[5px] top-[25%] bottom-[25%] w-[2px] rounded-full bg-[#2DD4BF]" />
-          <span className="text-[10px] font-bold text-white tracking-wide ml-[2px]">RTS</span>
-        </div>
-        <div className="flex-1">
-          <p className="text-xs font-bold text-white leading-tight">{activeOrg?.name ?? "ReachTheSoul"}</p>
-          <p className="text-[10px] text-sidebar-foreground/50 leading-tight">reachthesoul.org</p>
+        {activeOrg?.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={activeOrg.logoUrl}
+            alt={activeOrg.name ?? "Organization logo"}
+            className="w-8 h-8 rounded-md object-cover flex-shrink-0 bg-white"
+          />
+        ) : (
+          <div className="w-8 h-8 rounded-md bg-[#1A2942] flex items-center justify-center flex-shrink-0 relative overflow-hidden">
+            <div className="absolute left-[5px] top-[25%] bottom-[25%] w-[2px] rounded-full bg-[#2DD4BF]" />
+            <span className="text-[10px] font-bold text-white tracking-wide ml-[2px]">RTS</span>
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-white leading-tight truncate">{activeOrg?.name ?? "ReachTheSoul"}</p>
+          <p className="text-[10px] text-sidebar-foreground/50 leading-tight">
+            {activeOrg?.name ? "Powered by ReachTheSoul" : "reachthesoul.org"}
+          </p>
         </div>
         <button
           className="lg:hidden p-1 rounded text-sidebar-foreground/60 hover:text-white transition-colors"

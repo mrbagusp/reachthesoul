@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { User, Lock, Bell, Shield, Check, Eye, EyeOff, CreditCard, AlertTriangle, Pause, XCircle, Clock, Calendar } from "lucide-react";
+import { User, Lock, Bell, Shield, Check, Eye, EyeOff, CreditCard, AlertTriangle, Pause, XCircle, Clock, Calendar, Building2, Upload, Image as ImageIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,15 +9,11 @@ import { useOrgStore } from "@/store/org-store";
 import { getPlanConfig } from "@/lib/plans";
 import type { PlanTier } from "@/types";
 import { cn } from "@/lib/utils";
+import { doc, updateDoc } from "firebase/firestore";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "@/lib/firebase";
 
-type Tab = "profile" | "security" | "notifications" | "subscription";
-
-const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "profile",       label: "Profile",       icon: User       },
-  { id: "security",      label: "Security",      icon: Lock       },
-  { id: "notifications", label: "Notifications", icon: Bell       },
-  { id: "subscription",  label: "Subscription",  icon: CreditCard },
-];
+type Tab = "profile" | "security" | "notifications" | "subscription" | "organization";
 
 const roleColors: Record<string, string> = {
   admin:      "bg-emerald-100 text-emerald-700",
@@ -31,6 +27,126 @@ const PLAN_COLORS: Record<string, string> = {
   growth:     "#7C3AED",
   enterprise: "#D97706",
 };
+
+// ─── Organization Settings Tab (admin only) ─────────────────────────
+
+function OrganizationTab() {
+  const activeOrg = useOrgStore((s) => s.activeOrg);
+  const setActiveOrg = useOrgStore((s) => s.setActiveOrg);
+
+  const [name, setName] = useState(activeOrg?.name ?? "");
+  const [logoPreview, setLogoPreview] = useState<string | null>(activeOrg?.logoUrl ?? null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  const onPickLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError("");
+    if (!file.type.startsWith("image/")) {
+      setError("File harus berupa gambar (PNG, JPG, atau SVG).");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Ukuran logo maksimal 2MB.");
+      return;
+    }
+    setLogoFile(file);
+    setLogoPreview(URL.createObjectURL(file));
+  };
+
+  const handleSave = async () => {
+    if (!activeOrg?.orgId) { setError("Organisasi tidak ditemukan."); return; }
+    if (!name.trim()) { setError("Nama organisasi tidak boleh kosong."); return; }
+    setSaving(true);
+    setError("");
+    try {
+      let logoUrl = activeOrg.logoUrl ?? "";
+
+      if (logoFile) {
+        const ext = (logoFile.name.split(".").pop() || "png").toLowerCase();
+        const path = `org-logos/${activeOrg.orgId}/logo.${ext}`;
+        const sRef = storageRef(storage, path);
+        await uploadBytes(sRef, logoFile, { contentType: logoFile.type });
+        logoUrl = await getDownloadURL(sRef);
+      }
+
+      await updateDoc(doc(db, "organizations", activeOrg.orgId), {
+        name: name.trim(),
+        logoUrl,
+        updatedAt: new Date().toISOString(),
+      });
+
+      setActiveOrg({ ...activeOrg, name: name.trim(), logoUrl });
+
+      setLogoFile(null);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err: any) {
+      setError(err?.message || "Gagal menyimpan. Coba lagi.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card className="border border-border shadow-none">
+      <CardHeader className="pb-3 px-5 pt-5">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <Building2 size={15} /> Organization
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-5 pb-5 flex flex-col gap-5">
+        {/* Logo uploader */}
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-lg border border-border bg-muted/40 flex items-center justify-center overflow-hidden flex-shrink-0">
+            {logoPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoPreview} alt="Logo preview" className="w-full h-full object-cover" />
+            ) : (
+              <ImageIcon size={22} className="text-muted-foreground" />
+            )}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border text-xs font-medium cursor-pointer hover:bg-muted/50 transition-colors w-fit">
+              <Upload size={13} />
+              {logoPreview ? "Ganti Logo" : "Upload Logo"}
+              <input type="file" accept="image/*" className="hidden" onChange={onPickLogo} />
+            </label>
+            <p className="text-[11px] text-muted-foreground">PNG / JPG / SVG, maks 2MB. Disarankan persegi.</p>
+          </div>
+        </div>
+
+        {/* Org name */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Nama Organisasi / Gereja</label>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="h-9 text-sm"
+            placeholder="mis. GBI Anugerah Jakarta"
+          />
+          <p className="text-[11px] text-muted-foreground">Nama ini tampil di sidebar untuk seluruh tim Anda.</p>
+        </div>
+
+        {error && <p className="text-xs text-destructive font-medium">{error}</p>}
+
+        <div className="flex items-center justify-end gap-3 pt-1">
+          {saved && (
+            <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+              <Check size={12} /> Tersimpan
+            </span>
+          )}
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? "Menyimpan..." : "Simpan Perubahan"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 // ─── Subscription Settings Tab ──────────────────────────────────────
 
@@ -56,7 +172,6 @@ function SubscriptionTab() {
   const subscriptionId = subscription?.subscriptionId ?? "";
   const dataDeleteAt = subscription?.dataDeleteAt;
 
-  // Format date helper
   const formatDate = (iso: string) => {
     try {
       return new Date(iso).toLocaleDateString("en-US", {
@@ -67,12 +182,9 @@ function SubscriptionTab() {
     }
   };
 
-  // Calculate days remaining for data retention
   const daysRemaining = dataDeleteAt
     ? Math.max(0, Math.ceil((new Date(dataDeleteAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : null;
-
-  // ─── Pause Subscription ─────────────────────────────────────────
 
   const handlePause = async () => {
     if (!subscriptionId || !activeOrg?.orgId) return;
@@ -96,7 +208,6 @@ function SubscriptionTab() {
           message: `Subscription paused. Your data will be retained until ${formatDate(data.resumeAt)}. After that, all data will be permanently removed.`,
         });
         setShowPauseConfirm(false);
-        // Reload to reflect changes
         setTimeout(() => window.location.reload(), 3000);
       } else {
         setActionResult({
@@ -112,8 +223,6 @@ function SubscriptionTab() {
     }
     setPauseLoading(false);
   };
-
-  // ─── Cancel Subscription ────────────────────────────────────────
 
   const handleCancel = async () => {
     if (!subscriptionId || !activeOrg?.orgId) return;
@@ -139,7 +248,6 @@ function SubscriptionTab() {
         });
         setShowCancelConfirm(false);
         setCancelReason("");
-        // Reload to reflect changes
         setTimeout(() => window.location.reload(), 3000);
       } else {
         setActionResult({
@@ -155,8 +263,6 @@ function SubscriptionTab() {
     }
     setCancelLoading(false);
   };
-
-  // ─── Free plan — no subscription to manage ─────────────────────
 
   if (currentPlan === "free") {
     return (
@@ -186,8 +292,6 @@ function SubscriptionTab() {
       </Card>
     );
   }
-
-  // ─── Paid plan — subscription management ────────────────────────
 
   return (
     <div className="flex flex-col gap-4">
@@ -222,7 +326,6 @@ function SubscriptionTab() {
             </div>
           </div>
 
-          {/* Subscription details grid */}
           <div className="grid grid-cols-2 gap-3 text-xs">
             {subscription?.currentPeriodEnd && (
               <div className="flex items-center gap-2 text-muted-foreground">
@@ -250,7 +353,6 @@ function SubscriptionTab() {
             )}
           </div>
 
-          {/* Data retention warning */}
           {(isPaused || isCanceled) && daysRemaining !== null && (
             <div className={cn(
               "mt-4 p-3 rounded-lg text-xs",
@@ -278,7 +380,6 @@ function SubscriptionTab() {
         </CardContent>
       </Card>
 
-      {/* Action result message */}
       {actionResult && (
         <div className={cn(
           "p-3 rounded-lg text-xs border",
@@ -290,14 +391,12 @@ function SubscriptionTab() {
         </div>
       )}
 
-      {/* Subscription Actions — only for org admins */}
       {isOrgAdmin && isActive && (
         <Card className="border border-border shadow-none">
           <CardHeader className="pb-3 px-5 pt-5">
             <CardTitle className="text-sm font-semibold text-foreground">Manage Subscription</CardTitle>
           </CardHeader>
           <CardContent className="px-5 pb-5 flex flex-col gap-4">
-            {/* Pause Subscription */}
             {!showPauseConfirm ? (
               <div className="flex items-center justify-between p-3 rounded-lg border border-border">
                 <div>
@@ -358,7 +457,6 @@ function SubscriptionTab() {
               </div>
             )}
 
-            {/* Cancel Subscription */}
             {!showCancelConfirm ? (
               <div className="flex items-center justify-between p-3 rounded-lg border border-red-200/50">
                 <div>
@@ -444,7 +542,6 @@ function SubscriptionTab() {
         </Card>
       )}
 
-      {/* Non-admin notice */}
       {!isOrgAdmin && isActive && (
         <Card className="border border-border shadow-none">
           <CardContent className="p-5">
@@ -462,7 +559,19 @@ function SubscriptionTab() {
 
 export default function ProfilePage() {
   const { currentUser } = useAuthStore();
+  const isOrgAdmin = currentUser?.role === "admin";
   const [tab, setTab] = useState<Tab>("profile");
+
+  // Tabs — "Organization" only shown to org admins
+  const baseTabs: { id: Tab; label: string; icon: React.ElementType }[] = [
+    { id: "profile",       label: "Profile",       icon: User       },
+    { id: "security",      label: "Security",      icon: Lock       },
+    { id: "notifications", label: "Notifications", icon: Bell       },
+    { id: "subscription",  label: "Subscription",  icon: CreditCard },
+  ];
+  const tabs = isOrgAdmin
+    ? [...baseTabs, { id: "organization" as Tab, label: "Organization", icon: Building2 }]
+    : baseTabs;
 
   // Profile state
   const [displayName, setDisplayName] = useState(currentUser?.displayName ?? "");
@@ -704,6 +813,9 @@ export default function ProfilePage() {
 
       {/* Tab: Subscription */}
       {tab === "subscription" && <SubscriptionTab />}
+
+      {/* Tab: Organization (admin only) */}
+      {tab === "organization" && isOrgAdmin && <OrganizationTab />}
     </div>
   );
 }

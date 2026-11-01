@@ -8,6 +8,7 @@ import {
 } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getFunctions, type Functions } from "firebase/functions";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY            || "AIzaSyBwDi5SOFvQU_k-2U36V8vphzTs7Df6lSw",
@@ -20,10 +21,11 @@ const firebaseConfig = {
 };
 
 // Lazy singletons — only initialized in browser, never during SSR
-let _app:       FirebaseApp | undefined;
-let _auth:      Auth       | undefined;
-let _db:        Firestore  | undefined;
-let _functions: Functions  | undefined;
+let _app:       FirebaseApp     | undefined;
+let _auth:      Auth            | undefined;
+let _db:        Firestore       | undefined;
+let _functions: Functions       | undefined;
+let _storage:   FirebaseStorage | undefined;
 
 export function getFirebaseApp(): FirebaseApp {
   if (!_app) {
@@ -63,7 +65,15 @@ export function getFirebaseFunctions(): Functions {
   return _functions;
 }
 
+export function getFirebaseStorage(): FirebaseStorage {
+  if (!_storage) {
+    _storage = getStorage(getFirebaseApp());
+  }
+  return _storage;
+}
+
 // Convenience re-exports — safe to use in client components
 export const auth      = getFirebaseAuth();
 export const db        = getFirebaseDb();
 export const functions = getFirebaseFunctions();
+export const storage   = getFirebaseStorage();
