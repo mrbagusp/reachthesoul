@@ -264,6 +264,65 @@ const STYLES = `
     .wa-float-label { font-size: 14px; font-weight: 600; font-family: var(--font-body); }
     @media (max-width: 640px) { .wa-float { padding: 14px; border-radius: 50%; } .wa-float-label { display: none; } }
 
+    /* ── DASHBOARD PREVIEW ── */
+    .dash { padding: 100px 0; background: var(--navy); color: var(--white); overflow: hidden; }
+    .dash-header { text-align: center; max-width: 680px; margin: 0 auto 50px; }
+    .dash-header .badge { background: rgba(45,212,191,0.12); color: var(--teal); border: 1px solid rgba(45,212,191,0.25); margin-bottom: 18px; }
+    .dash-header h2 { font-family: var(--font-display); font-size: clamp(28px, 4vw, 42px); line-height: 1.2; margin-bottom: 14px; }
+    .dash-header p { font-size: 16px; color: rgba(255,255,255,0.5); }
+    .dash-vp { max-width: 1000px; margin: 0 auto; }
+    .dash-track { display: flex; gap: 24px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding: 4px 2px 10px; scrollbar-width: none; }
+    .dash-track::-webkit-scrollbar { display: none; }
+    .dash-slide { scroll-snap-align: center; flex: 0 0 100%; max-width: 100%; }
+    .dash-browser { background: #0E1626; border: 1px solid var(--navy-lighter); border-radius: 16px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.45); }
+    .dash-bar { display: flex; align-items: center; gap: 7px; padding: 11px 14px; background: #141E31; border-bottom: 1px solid var(--navy-lighter); }
+    .dash-tdot { width: 11px; height: 11px; border-radius: 50%; }
+    .dash-url { margin-left: 12px; font-size: 12px; color: rgba(255,255,255,0.4); background: #0B1220; border: 1px solid var(--navy-lighter); border-radius: 7px; padding: 4px 12px; flex: 1; max-width: 340px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .dash-imgwrap { position: relative; cursor: zoom-in; background: #0B1220; }
+    .dash-imgwrap img { width: 100%; display: block; }
+    .dash-zoom { position: absolute; top: 12px; right: 12px; background: rgba(10,18,32,0.85); border: 1px solid var(--navy-lighter); color: rgba(255,255,255,0.8); font-size: 11px; font-weight: 600; padding: 5px 11px; border-radius: 20px; pointer-events: none; }
+    .dash-cap { text-align: center; margin-top: 18px; }
+    .dash-cap h3 { font-family: var(--font-display); font-size: 19px; margin-bottom: 5px; }
+    .dash-cap p { font-size: 13.5px; color: rgba(255,255,255,0.5); margin: 0; }
+    .dash-ctrls { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 26px; }
+    .dash-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--navy-lighter); background: #0E1626; color: rgba(255,255,255,0.8); font-size: 19px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .dash-btn:hover { border-color: var(--teal); color: var(--teal); }
+    .dash-dots { display: flex; gap: 7px; }
+    .dash-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--navy-lighter); border: none; cursor: pointer; padding: 0; transition: all 0.2s; }
+    .dash-dot.on { background: var(--teal); width: 24px; border-radius: 5px; }
+    .dash-lb { position: fixed; inset: 0; background: rgba(3,7,14,0.92); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 28px; cursor: zoom-out; }
+    .dash-lb.show { display: flex; }
+    .dash-lb img { max-width: 96vw; max-height: 92vh; border-radius: 10px; border: 1px solid var(--navy-lighter); box-shadow: 0 30px 80px rgba(0,0,0,0.6); }
+    .dash-lb-x { position: absolute; top: 20px; right: 26px; color: rgba(255,255,255,0.8); font-size: 30px; line-height: 1; cursor: pointer; background: none; border: none; }
+
+    /* ── TESTIMONIALS ── */
+    .tsm { padding: 100px 0; background: var(--off-white); }
+    .tsm-header { text-align: center; max-width: 720px; margin: 0 auto 44px; }
+    .tsm-header .badge { background: rgba(45,212,191,0.1); color: var(--teal-dark); border: 1px solid rgba(45,212,191,0.2); margin-bottom: 18px; }
+    .tsm-header h2 { font-family: var(--font-display); font-size: clamp(28px, 4vw, 42px); color: var(--navy); line-height: 1.2; margin-bottom: 14px; }
+    .tsm-header p { font-size: 16px; color: var(--gray-500); }
+    .tsm-vp { max-width: 1120px; margin: 0 auto; }
+    .tsm-track { display: flex; gap: 20px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding: 4px 2px 10px; scrollbar-width: none; }
+    .tsm-track::-webkit-scrollbar { display: none; }
+    .tsm-card { scroll-snap-align: center; flex: 0 0 100%; max-width: 100%; background: var(--white); border: 1px solid var(--gray-200); border-radius: 16px; padding: 28px 26px; display: flex; flex-direction: column; gap: 16px; }
+    @media (min-width: 720px) { .tsm-card { flex-basis: calc(50% - 10px); max-width: calc(50% - 10px); } }
+    @media (min-width: 1040px) { .tsm-card { flex-basis: calc(33.333% - 14px); max-width: calc(33.333% - 14px); } }
+    .tsm-badge { align-self: flex-start; font-size: 11px; font-weight: 700; color: #B45309; background: rgba(245,158,11,0.1); border: 1px dashed rgba(245,158,11,0.4); border-radius: 8px; padding: 4px 10px; }
+    .tsm-quoteicon { font-family: var(--font-display); font-size: 40px; line-height: 0.5; color: var(--teal); height: 20px; }
+    .tsm-quote { font-size: 15px; line-height: 1.65; color: var(--gray-600); font-style: italic; margin: 0; flex: 1; }
+    .tsm-person { display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--gray-200); padding-top: 16px; }
+    .tsm-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--gray-100); border: 1px solid rgba(45,212,191,0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--teal-dark); font-weight: 800; font-size: 15px; }
+    .tsm-name { font-size: 14px; font-weight: 700; color: var(--navy); line-height: 1.2; }
+    .tsm-role { font-size: 12px; color: var(--gray-500); line-height: 1.3; margin-top: 2px; }
+    .tsm-region { display: inline-block; margin-top: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--teal-dark); background: rgba(45,212,191,0.08); border: 1px solid rgba(45,212,191,0.2); border-radius: 20px; padding: 2px 10px; }
+    .tsm-ctrls { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 26px; }
+    .tsm-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--gray-300); background: var(--white); color: var(--gray-600); font-size: 19px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .tsm-btn:hover { border-color: var(--teal); color: var(--teal-dark); }
+    .tsm-dots { display: flex; gap: 7px; }
+    .tsm-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray-300); border: none; cursor: pointer; padding: 0; transition: all 0.2s; }
+    .tsm-dot.on { background: var(--teal); width: 24px; border-radius: 5px; }
+    .tsm-note { max-width: 720px; margin: 30px auto 0; text-align: center; font-size: 11px; color: var(--gray-400); line-height: 1.5; }
+
     /* ── ANIMATIONS ── */
     .fade-up { opacity: 0; transform: translateY(30px); transition: all 0.6s ease-out; }
     .fade-up.visible { opacity: 1; transform: translateY(0); }
@@ -497,6 +556,68 @@ const BODY = `
   </div>
 </section>
 
+<!-- DASHBOARD PREVIEW -->
+<section class="dash" id="dashboard-preview">
+  <div class="container">
+    <div class="dash-header">
+      <div class="badge">🖥 See It In Action</div>
+      <h2>Take a look inside the dashboard</h2>
+      <p>Everything your ministry needs to receive, respond to, and follow up on every prayer and conversation — in one clean, simple workspace. Click any screen to zoom in.</p>
+    </div>
+    <div class="dash-vp">
+      <div class="dash-track" id="dashTrack">
+
+        <div class="dash-slide">
+          <div class="dash-browser">
+            <div class="dash-bar"><span class="dash-tdot" style="background:#ff5f57"></span><span class="dash-tdot" style="background:#febc2e"></span><span class="dash-tdot" style="background:#28c840"></span><span class="dash-url">reachthesoul.org/dashboard/start</span></div>
+            <div class="dash-imgwrap"><img src="/dashboard/1-start.png" alt="Guided setup"><span class="dash-zoom">🔍 Click to zoom</span></div>
+          </div>
+          <div class="dash-cap"><h3>Up and running in minutes</h3><p>A guided setup that checks itself off as each step starts working.</p></div>
+        </div>
+
+        <div class="dash-slide">
+          <div class="dash-browser">
+            <div class="dash-bar"><span class="dash-tdot" style="background:#ff5f57"></span><span class="dash-tdot" style="background:#febc2e"></span><span class="dash-tdot" style="background:#28c840"></span><span class="dash-url">reachthesoul.org/dashboard</span></div>
+            <div class="dash-imgwrap"><img src="/dashboard/2-overview.png" alt="Overview dashboard"><span class="dash-zoom">🔍 Click to zoom</span></div>
+          </div>
+          <div class="dash-cap"><h3>Your whole ministry at a glance</h3><p>Open requests, people reached, and AI status — all in one summary.</p></div>
+        </div>
+
+        <div class="dash-slide">
+          <div class="dash-browser">
+            <div class="dash-bar"><span class="dash-tdot" style="background:#ff5f57"></span><span class="dash-tdot" style="background:#febc2e"></span><span class="dash-tdot" style="background:#28c840"></span><span class="dash-url">reachthesoul.org/dashboard/tickets</span></div>
+            <div class="dash-imgwrap"><img src="/dashboard/3-tickets.png" alt="Unified inbox"><span class="dash-zoom">🔍 Click to zoom</span></div>
+          </div>
+          <div class="dash-cap"><h3>Every channel in one inbox</h3><p>WhatsApp, Instagram, Facebook and website chat become tracked conversations.</p></div>
+        </div>
+
+        <div class="dash-slide">
+          <div class="dash-browser">
+            <div class="dash-bar"><span class="dash-tdot" style="background:#ff5f57"></span><span class="dash-tdot" style="background:#febc2e"></span><span class="dash-tdot" style="background:#28c840"></span><span class="dash-url">reachthesoul.org/dashboard/respondents</span></div>
+            <div class="dash-imgwrap"><img src="/dashboard/4-respondent.png" alt="Respondent journey"><span class="dash-zoom">🔍 Click to zoom</span></div>
+          </div>
+          <div class="dash-cap"><h3>Every person’s full journey</h3><p>Conversation history, ministry progress and counseling notes in one profile.</p></div>
+        </div>
+
+        <div class="dash-slide">
+          <div class="dash-browser">
+            <div class="dash-bar"><span class="dash-tdot" style="background:#ff5f57"></span><span class="dash-tdot" style="background:#febc2e"></span><span class="dash-tdot" style="background:#28c840"></span><span class="dash-url">reachthesoul.org/dashboard/admin/ai-settings</span></div>
+            <div class="dash-imgwrap"><img src="/dashboard/5-ai.png" alt="AI settings"><span class="dash-zoom">🔍 Click to zoom</span></div>
+          </div>
+          <div class="dash-cap"><h3>AI that answers 24/7 — on your terms</h3><p>Auto-reply, escalation and crisis detection, with your own rules and prompt.</p></div>
+        </div>
+
+      </div>
+      <div class="dash-ctrls">
+        <button class="dash-btn" id="dashPrev" aria-label="Previous">‹</button>
+        <div class="dash-dots" id="dashDots"></div>
+        <button class="dash-btn" id="dashNext" aria-label="Next">›</button>
+      </div>
+    </div>
+  </div>
+  <div class="dash-lb" id="dashLb"><button class="dash-lb-x" id="dashLbX" aria-label="Close">×</button><img id="dashLbImg" src="" alt="Zoomed view"></div>
+</section>
+
 <!-- PRICING -->
 <section class="pricing" id="pricing">
   <div class="container">
@@ -592,6 +713,56 @@ const BODY = `
           <span>hello@reachthesoul.org</span>
         </a>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="tsm" id="testimonials">
+  <div class="container">
+    <div class="tsm-header">
+      <div class="badge">🌍 For Churches &amp; Ministries Everywhere</div>
+      <h2>The church has a mission beyond its walls</h2>
+      <p>From Asia to Africa, Europe to the Americas — people everywhere need someone to listen, encourage, and pray with them. ReachTheSoul helps churches make those connections possible through one unified platform.</p>
+    </div>
+    <div class="tsm-vp">
+      <div class="tsm-track" id="tsmTrack">
+
+        <div class="tsm-card">
+          <span class="tsm-badge">Your church’s story here</span>
+          <div class="tsm-quoteicon">“</div>
+          <p class="tsm-quote">Share how ReachTheSoul helped your church listen, respond, and care for the people who reach out. This space is reserved for a real testimony from your ministry.</p>
+          <div class="tsm-person"><div class="tsm-avatar">?</div><div><div class="tsm-name">Pastor / Ministry Name</div><div class="tsm-role">Church / Ministry · Ministry focus</div><span class="tsm-region">Region</span></div></div>
+        </div>
+
+        <div class="tsm-card">
+          <span class="tsm-badge">Your church’s story here</span>
+          <div class="tsm-quoteicon">“</div>
+          <p class="tsm-quote">Tell us about the people you were able to reach and follow up with. Real stories from churches will appear here once they are shared with permission.</p>
+          <div class="tsm-person"><div class="tsm-avatar">?</div><div><div class="tsm-name">Pastor / Ministry Name</div><div class="tsm-role">Church / Ministry · Ministry focus</div><span class="tsm-region">Region</span></div></div>
+        </div>
+
+        <div class="tsm-card">
+          <span class="tsm-badge">Your church’s story here</span>
+          <div class="tsm-quoteicon">“</div>
+          <p class="tsm-quote">Describe how bringing every conversation into one place changed the way your team cares for your community. Your verified testimony can be featured here.</p>
+          <div class="tsm-person"><div class="tsm-avatar">?</div><div><div class="tsm-name">Pastor / Ministry Name</div><div class="tsm-role">Church / Ministry · Ministry focus</div><span class="tsm-region">Region</span></div></div>
+        </div>
+
+        <div class="tsm-card">
+          <span class="tsm-badge">Your church’s story here</span>
+          <div class="tsm-quoteicon">“</div>
+          <p class="tsm-quote">Is your ministry using ReachTheSoul? We would love to share your story here. Reach out to us to be featured, with your permission.</p>
+          <div class="tsm-person"><div class="tsm-avatar">?</div><div><div class="tsm-name">Pastor / Ministry Name</div><div class="tsm-role">Church / Ministry · Ministry focus</div><span class="tsm-region">Region</span></div></div>
+        </div>
+
+      </div>
+      <div class="tsm-ctrls">
+        <button class="tsm-btn" id="tsmPrev" aria-label="Previous">‹</button>
+        <div class="tsm-dots" id="tsmDots"></div>
+        <button class="tsm-btn" id="tsmNext" aria-label="Next">›</button>
+      </div>
+      <p class="tsm-note">Testimonials shown are placeholders. Real stories will be featured here with each church’s written permission.</p>
     </div>
   </div>
 </section>
@@ -721,6 +892,45 @@ const nav = document.getElementById('nav');
 window.addEventListener('scroll', () => {
   nav.classList.toggle('scrolled', window.scrollY > 50);
 });
+
+// ── Dashboard + Testimonial sliders ──
+function rtsSlider(trackId, dotsId, prevId, nextId){
+  var track = document.getElementById(trackId); if(!track) return;
+  var dotsWrap = document.getElementById(dotsId);
+  var slides = track.children;
+  dotsWrap.innerHTML = '';
+  for (var i=0;i<slides.length;i++){
+    (function(i){
+      var d = document.createElement('button');
+      d.className = dotsId.indexOf('dash')===0 ? 'dash-dot' : 'tsm-dot';
+      if(i===0) d.className += ' on';
+      d.addEventListener('click', function(){ go(i); });
+      dotsWrap.appendChild(d);
+    })(i);
+  }
+  function go(i){ var s=slides[i]; if(s) track.scrollTo({left:s.offsetLeft-track.offsetLeft, behavior:'smooth'}); }
+  function cur(){ var c=track.scrollLeft+track.clientWidth/2, best=0, bd=Infinity;
+    for(var i=0;i<slides.length;i++){ var s=slides[i]; var cc=s.offsetLeft-track.offsetLeft+s.clientWidth/2; var dd=Math.abs(cc-c); if(dd<bd){bd=dd;best=i;} } return best; }
+  function sync(){ var k=cur(); var ds=dotsWrap.children; for(var i=0;i<ds.length;i++){ ds[i].classList.toggle('on', i===k); } }
+  track.addEventListener('scroll', function(){ requestAnimationFrame(sync); });
+  var p=document.getElementById(prevId), n=document.getElementById(nextId);
+  if(p) p.addEventListener('click', function(){ go(Math.max(0, cur()-1)); });
+  if(n) n.addEventListener('click', function(){ go(Math.min(slides.length-1, cur()+1)); });
+}
+rtsSlider('dashTrack','dashDots','dashPrev','dashNext');
+rtsSlider('tsmTrack','tsmDots','tsmPrev','tsmNext');
+
+// ── Dashboard lightbox (zoom) ──
+(function(){
+  var lb=document.getElementById('dashLb'), lbImg=document.getElementById('dashLbImg');
+  if(!lb) return;
+  var wraps=document.querySelectorAll('#dashTrack .dash-imgwrap');
+  wraps.forEach(function(w){ var img=w.querySelector('img'); w.addEventListener('click', function(){ lbImg.src=img.src; lb.classList.add('show'); }); });
+  function close(){ lb.classList.remove('show'); lbImg.src=''; }
+  lb.addEventListener('click', close);
+  var x=document.getElementById('dashLbX'); if(x) x.addEventListener('click', close);
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
+})();
 
 // Scroll reveal
 const observer = new IntersectionObserver((entries) => {
