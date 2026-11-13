@@ -55,6 +55,16 @@ async function processBatch(batchSize = 15): Promise<{ sent: number; failed: num
   const activeCampaigns = await getDb().collection("campaigns").where("status", "==", "sending").get();
   if (activeCampaigns.empty) return { sent: 0, failed: 0, remaining: 0 };
 
+  // Rate limit per jam KHUSUS campaign outreach otomatis (source: "daily_outreach").
+  // Campaign manual tidak terpengaruh.
+  const OUTREACH_PER_HOUR = 10;
+  const hourKey = new Date().toISOString().slice(0, 13); // "2026-11-10T09"
+  const rateRef = getDb().doc(`outreach_rate/${hourKey}`);
+  let outreachSentThisHour = 0;
+  {
+    const snap = await rateRef.get();
+    outreachSentThisHour = snap.exists ? (snap.data()?.count ?? 0) : 0;
+  }
   let totalSent = 0, totalFailed = 0, totalRemaining = 0;
 
   for (const campaignDoc of activeCampaigns.docs) {
@@ -78,6 +88,12 @@ async function processBatch(batchSize = 15): Promise<{ sent: number; failed: num
     let sent = 0, failed = 0;
     for (const doc of pending.docs) {
       const r = doc.data();
+
+      // Rem khusus outreach otomatis: berhenti kalau kuota jam ini habis.
+      // Recipient yang tersisa tetap "pending" dan akan dikirim di jam berikutnya.
+      if (campaign.source === "daily_outreach" && outreachSentThisHour >= OUTREACH_PER_HOUR) {
+        break;
+      }
 
       if (r.channel === "email" && r.email) {
         try {
@@ -104,6 +120,10 @@ async function processBatch(batchSize = 15): Promise<{ sent: number; failed: num
           if (result.success) {
             await doc.ref.update({ status: "sent", sentAt: admin.firestore.FieldValue.serverTimestamp() });
             sent++;
+            if (campaign.source === "daily_outreach") {
+              outreachSentThisHour++;
+              await rateRef.set({ count: admin.firestore.FieldValue.increment(1), hour: hourKey }, { merge: true });
+            }
           } else {
             await doc.ref.update({ status: "failed", error: result.error ?? "unknown", failedAt: admin.firestore.FieldValue.serverTimestamp() });
             failed++;

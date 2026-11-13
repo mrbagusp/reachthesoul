@@ -40,6 +40,9 @@ export { onOnboardingComplete };
 // Campaign Engine (Lead Blaster)
 export { createCampaign, processCampaignQueue, processCampaignQueueScheduled } from "./campaignEngine";
 
+// Daily Outreach (auto search gereja per kota + kirim email terjadwal)
+// Daily Outreach (auto search gereja per kota + kirim email terjadwal)
+export { dailyOutreachJob, dailyOutreachRunNow, runDailyOutreachNow } from "./dailyOutreach";
 // Facebook / Instagram OAuth "Connect" flow
 export { fbConnectStart, fbConnectCallback } from "./facebook-oauth";
 export { waConnectStart, waConnectCallback } from "./whatsapp-onboard";

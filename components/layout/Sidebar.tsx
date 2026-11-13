@@ -213,7 +213,7 @@ export function Sidebar({ role, userName, onLogout, mobileOpen, onMobileClose }:
 
       {/* Platform Admin — only visible for platform admins */}
       {isPlatformAdmin && (
-        <div className="px-3 pb-1">
+        <div className="px-3 pb-1 flex flex-col gap-0.5">
           <Link
             href="/dashboard/platform"
             className={cn(
@@ -225,6 +225,18 @@ export function Sidebar({ role, userName, onLogout, mobileOpen, onMobileClose }:
           >
             <Shield size={14} />
             <span className="font-medium">Super Admin</span>
+          </Link>
+          <Link
+            href="/dashboard/platform/auto-outreach"
+            className={cn(
+              "flex items-center gap-2.5 px-3 py-2 rounded-md text-xs transition-colors border",
+              pathname === "/dashboard/platform/auto-outreach"
+                ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                : "text-amber-400/60 hover:bg-amber-500/10 hover:text-amber-300 border-transparent"
+            )}
+          >
+            <Rocket size={14} />
+            <span className="font-medium">Auto Outreach</span>
           </Link>
         </div>
       )}
